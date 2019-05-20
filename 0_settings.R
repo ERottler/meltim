@@ -1,30 +1,18 @@
 ###
 
-#Rhine snow - Cluster parallel computing
+#Rhine snow - General settings
 #Erwin Rottler, University of Potsdam
+#Spring, 2019
 
 ###
-
-#cluster----
-
-#Cluster for parallel computing
-
-#stop cluster
-stopCluster(my_clust)
-
-n_cores <- 45 #number of cores used for parallel computing
-
-#Make cluster for parallel computing
-my_clust <- makeCluster(n_cores)
-clusterEvalQ(my_clust, pacman::p_load(zoo, zyp, alptempr, lmomco, ncdf4, rEchseSnow, sp, raster, betareg, rfs))
-registerDoParallel(my_clust)
-
 
 #packages----
 
 # devtools::install_github('ERottler/alptempr')
-# 
-# devtools::install_github('ERottler/meltimr')
+
+remove.packages("meltimr")
+devtools::install_github('ERottler/meltimr')
+library("meltimr")
 
 pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2, 
                sp, viridis, rgdal, leaflet, ggmap, zoo, zyp, alptempr, lmomco, 
@@ -43,3 +31,25 @@ file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
 
 #GRDC discharge data
 grdc_dir <- "d:/nrc_user/rottler/GRDC_DAY/"
+
+#functions----
+
+#load functions
+source(paste0(base_dir, "R/melTim/2_functions.R"))
+
+
+#cluster----
+
+#Cluster for parallel computing
+
+#stop cluster
+stopCluster(my_clust)
+
+n_cores <- 45 #number of cores used for parallel computing
+
+#Make cluster for parallel computing
+my_clust <- makeCluster(n_cores)
+clusterEvalQ(my_clust, pacman::p_load(zoo, zyp, alptempr, lmomco, ncdf4, rEchseSnow, sp, raster, betareg, rfs, meltimr))
+registerDoParallel(my_clust)
+
+
