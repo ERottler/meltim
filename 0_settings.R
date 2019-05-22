@@ -12,6 +12,7 @@
 
 remove.packages("meltimr")
 devtools::install_github('ERottler/meltimr')
+# devtools::install_github('ERottler/rfs')
 library("meltimr")
 
 pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2, 
@@ -30,13 +31,8 @@ base_dir <- "u:/RhineFlow/rhine_snow/"
 file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
 
 #GRDC discharge data
-grdc_dir <- "d:/nrc_user/rottler/GRDC_DAY/"
-
-#functions----
-
-#load functions
-source(paste0(base_dir, "R/melTim/2_functions.R"))
-
+# grdc_dir <- "d:/nrc_user/rottler/GRDC_DAY/"
+grdc_dir <- "e:/GRDC_DAY/"
 
 #cluster----
 
@@ -45,7 +41,7 @@ source(paste0(base_dir, "R/melTim/2_functions.R"))
 #stop cluster
 stopCluster(my_clust)
 
-n_cores <- 45 #number of cores used for parallel computing
+n_cores <- 4 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 my_clust <- makeCluster(n_cores)

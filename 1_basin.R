@@ -2,13 +2,13 @@
 
 #Rhine snow - Snow simulations + Meteo/snow analysis on sub-basin scale
 #Erwin Rottler, University of Potsdam
-#Spring 2018
+#Spring 2019
 
 ###
 
 sta_yea_bas <- 1961
 end_yea_bas <- 2014
-basin_sel <- "alp_rhine"        # alp_rhine,  reuss,     aare,  moselle, nahe,      neckar,   main,      lahn, basel
+basin_sel <- "basel"        # alp_rhine,  reuss,     aare,  moselle, nahe,      neckar,   main,      lahn, basel
 basin_stn <- "Diepoldsau"       # Diepoldsau, Mellingen, Brugg, Cochem,  Grolsheim, Rockenau, Frankfurt, Kalkofen, Basel_Rheinhalle
 high_stat_thresh <- 1900 #1900
 middle_stat_thresh <- 900 #900
