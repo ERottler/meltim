@@ -13,13 +13,14 @@
 remove.packages("meltimr")
 devtools::install_github('ERottler/meltimr')
 # devtools::install_github('ERottler/rfs')
+# devtools::install_github("laubblatt/phaselag")
 library("meltimr")
 
 pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2, 
                sp, viridis, rgdal, leaflet, ggmap, zoo, zyp, alptempr, lmomco, 
                raster, foreach, rfs, dismo, XML, parallel, doParallel, Lmoments,
                shape, devtools, pbapply, profvis, RColorBrewer, viridis, Rcpp, rEchseSnow,
-               Rlibeemd, xts, emdbook, rfs, meltimr)
+               Rlibeemd, xts, emdbook, rfs, meltimr, phaselag)
 
 #directories----
 
