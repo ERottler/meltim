@@ -6,11 +6,8 @@
 
 ###
 
-break_day <- 304 #1.Oct = 274, 1.Nov = 304
+break_day <- 274 #1.Oct = 274, 1.Nov = 304
 mid_yea_cal <- 1960
-gauge_sel <- "Domat" # Domat, Martinsbruck, Porte_du_Scex, Wasserburg, Burghausen, 
-                         # Diepoldsau, Neuhausen, Andelfingen, Appenzell, Rekingen, Mellingen, Bern_Schoenau, 
-                         # Emmenmatt, Montier, Murgenthal, Brugg, Untersiggenthal, Basel, Maxau, Koeln, Wuerzburg, Schwaibach, Thoerishaus
 do_ma <-  F
 ma_window <- 30
 
@@ -145,6 +142,7 @@ mk_sig <- function(data_in, cover_thresh = 0.9){
 }
 
 day_cross_slo <- apply(day_cross, 1, sens_slo) * 10 * -1 # [day/dec]
+day_cross_day <- apply(day_cross, 1, sens_slo) * 10 * -1 *decs # [days]
 day_cross_sig <- apply(day_cross, 1, mk_sig)
 day_cross_mea <- apply(day_cross, 1, mea_na)
 
@@ -168,7 +166,7 @@ if(break_day == 304){
   axis(1, at = x_axis_lab, c("N","D","J","F","M","A","M","J","J","A","S","O"), tick = FALSE,
        col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
 }
-if(break_day == 374){
+if(break_day == 274){
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
        col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
 }
@@ -215,8 +213,8 @@ mtext(paste0(round(day_cross_slo[25], 2) * decs, " days"), side = 3, line = 0.1,
 #Plot: All precentages with trends
 par(mar = c(2.5, 2.5, 1.5, 1.7))
 
-plot(day_cross_slo * decs, type = "l", axes = F, ylab = "", xlab = "")
-points(day_cross_slo * decs, pch = 19, cex = 0.7)
+plot(day_cross_day, type = "l", axes = F, ylab = "", xlab = "")
+points(day_cross_day, pch = 19, cex = 0.7)
 abline(h = 0, lty = "dashed")
 axis(2, mgp=c(3, 0.15, 0), cex.axis = 0.7)
 axis(1, mgp=c(3, 0.15, 0), cex.axis = 0.7)
@@ -266,33 +264,65 @@ mtext("01.11.2006- 31.10.2007", side = 3, line = 0.1, cex = 0.7, adj = 0.0)
 
 #export----
 
-dat19   <- data_mea
-dat19_1 <- data_mea_1
-dat19_2 <- data_mea_2
-meta_19 <- data_meta
+data_bru <- data_mea
+dat1_bru <- data_mea_1
+dat2_bru <- data_mea_2
+meta_bru <- data_meta
 
-day_cross_2 <- day_cross
-day_cross_mea_2 <- day_cross_mea
-day_cross_slo_2 <- day_cross_slo
-meta_cross_2 <- data_meta
+day_cross_bru <- day_cross
+day_cross_mea_bru <- day_cross_mea
+day_cross_slo_bru <- day_cross_slo
+day_cross_day_bru <- day_cross_day
 
-load( paste0(base_dir, "R/meltim/riv_flow_new.Rdata"))
+my_lags_bru <- my_lags
+slo_dec_bru <- slo_dec
+slo_all_bru <- slo_all
+  
+  
+load(paste0(base_dir, "R/meltim/meltim.Rdata"))
 
-save(dat1, dat1_1, dat1_2, meta_1, dat2, dat2_1, dat2_2, meta_2,
-     dat3, dat3_1, dat3_2, meta_3, dat4, dat4_1, dat4_2, meta_4,
-     dat5, dat5_1, dat5_2, meta_5, dat6, dat6_1, dat6_2, meta_6,
-     dat7, dat7_1, dat7_2, meta_7, dat8, dat8_1, dat8_2, meta_8,
-     dat9, dat9_1, dat9_2, meta_9, 
-     dat10, dat10_1, dat10_2, meta_10, dat11, dat11_1, dat11_2, meta_11,
-     dat12, dat12_1, dat12_2, meta_12, dat13, dat13_1, dat13_2, meta_13,
-     dat14, dat14_1, dat14_2, meta_14, dat15, dat15_1, dat15_2, meta_15,
-     dat16, dat16_1, dat16_2, meta_16, dat17, dat17_1, dat17_2, meta_17,
-     dat18, dat18_1, dat18_2, meta_18, dat19, dat19_1, dat19_2, meta_19,
+save(data_dom, dat1_dom, dat2_dom, meta_dom,
+     day_cross_dom, day_cross_mea_dom, day_cross_slo_dom, day_cross_day_dom,
+     my_lags_dom, slo_dec_dom, slo_all_dom,
      
-     day_cross_1, day_cross_mea_1, day_cross_slo_1, meta_cross_1,
-     day_cross_2, day_cross_mea_2, day_cross_slo_2, meta_cross_2,
+     data_mar, dat1_mar, dat2_mar, meta_mar,
+     day_cross_mar, day_cross_mea_mar, day_cross_slo_mar, day_cross_day_mar,
+     my_lags_mar, slo_dec_mar, slo_all_mar,
      
-     file = paste0(base_dir, "R/meltim/riv_flow_new.Rdata"))
+     data_por, dat1_por, dat2_por, meta_por,
+     day_cross_por, day_cross_mea_por, day_cross_slo_por, day_cross_day_por,
+     my_lags_por, slo_dec_por, slo_all_por,
+     
+     data_die, dat1_die, dat2_die, meta_die,
+     day_cross_die, day_cross_mea_die, day_cross_slo_die, day_cross_day_die,
+     my_lags_die, slo_dec_die, slo_all_die,
+     
+     data_was, dat1_was, dat2_was, meta_was,
+     day_cross_was, day_cross_mea_was, day_cross_slo_was, day_cross_day_was,
+     my_lags_was, slo_dec_was, slo_all_was,
+     
+     data_bur, dat1_bur, dat2_bur, meta_bur,
+     day_cross_bur, day_cross_mea_bur, day_cross_slo_bur, day_cross_day_bur,
+     my_lags_bur, slo_dec_bur, slo_all_bur,
+     
+     data_neu, dat1_neu, dat2_neu, meta_neu,
+     day_cross_neu, day_cross_mea_neu, day_cross_slo_neu, day_cross_day_neu,
+     my_lags_neu, slo_dec_neu, slo_all_neu,
+     
+     data_rek, dat1_rek, dat2_rek, meta_rek,
+     day_cross_rek, day_cross_mea_rek, day_cross_slo_rek, day_cross_day_rek,
+     my_lags_rek, slo_dec_rek, slo_all_rek,
+     
+     data_bas, dat1_bas, dat2_bas, meta_bas,
+     day_cross_bas, day_cross_mea_bas, day_cross_slo_bas, day_cross_day_bas,
+     my_lags_bas, slo_dec_bas, slo_all_bas,
+     
+     data_bru, dat1_bru, dat2_bru, meta_bru,
+     day_cross_bru, day_cross_mea_bru, day_cross_slo_bru, day_cross_day_bru,
+     my_lags_bru, slo_dec_bru, slo_all_bru,
+     
+  
+     file = paste0(base_dir, "R/meltim/meltim.Rdata"))
 
 
 

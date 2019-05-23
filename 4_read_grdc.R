@@ -6,7 +6,7 @@
 
 ###
 
-gauge_sel <- "Diepoldsau" 
+gauge_sel <- "Brugg" 
 # Domat, Martinsbruck, Porte_du_Scex, Wasserburg, Burghausen, 
 # Diepoldsau, Neuhausen, Andelfingen, Appenzell, Rekingen, Mellingen, Bern_Schoenau, 
 # Emmenmatt, Montier, Murgenthal, Brugg, Untersiggenthal, Basel, Maxau, Koeln, Wuerzburg, Schwaibach, Thoerishaus

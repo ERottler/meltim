@@ -42,7 +42,7 @@ grdc_dir <- "e:/GRDC_DAY/"
 #stop cluster
 stopCluster(my_clust)
 
-n_cores <- 4 #number of cores used for parallel computing
+n_cores <- 45 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 my_clust <- makeCluster(n_cores)
