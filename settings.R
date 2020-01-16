@@ -37,8 +37,6 @@ file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
 
 #GRDC discharge data
 grdc_dir <- "d:/nrc_user/rottler/GRDC_DAY/"
-# grdc_dir <- "e:/GRDC_DAY/"
-# grdc_dir <- "V:/xchange/erwin/GRDC_DAY/"
 
 #cluster----
 

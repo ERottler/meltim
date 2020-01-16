@@ -7,3 +7,12 @@ rEchseSnow
 snow_param.txt
 meltim_figs.Rmd
 meltim_figs.html
+melt_calib/calib_thread
+melt_calib/dds.log
+melt_calib/dds.pro
+melt_calib/results_stations.Rdata
+melt_calib/station_calib.txt
+melt_calib/station_calib_old.txt
+melt_calib/dds_progress1.png
+melt_calib/dds_progress2.png
+melt_calib/Thumbs.db
