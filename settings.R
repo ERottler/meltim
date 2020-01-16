@@ -64,9 +64,6 @@ save(snows_d_band, my_elev_bands, date_snow, svolu_d_band,
      file = "U:/rhine_snow/R/draft_snow_17_12.RData")
      # file = "U:/rhine_snow/R/draft_snow_100.RData")
 
-save(snows_d_band, my_elev_bands, date_snow, svolu_d_band,
-     
-     file = "U:/rhine_snow/R/draft_snow_75.RData")
 
 # smea_band_diep <- smea_band
 # sslo_band_diep <- sslo_band

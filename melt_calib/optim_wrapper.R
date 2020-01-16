@@ -10,7 +10,7 @@ optim_wrapper <- function(params = NULL){
 
   #Snow simulations----
   
-  load(paste0(base_dir, "R/melt_calib/calib_thread/calib_snow_data.Rdata"))
+  load(paste0(base_dir, "R/meltim/melt_calib/calib_thread/calib_snow_data.Rdata"))
   
   #Modify model parameters
   
@@ -141,7 +141,7 @@ optim_wrapper <- function(params = NULL){
   
   #Goodness_fit----
   
-  source("3_obj_function.R")
+  source("melt_calib/obj_function.R")
 
   #selecte calibration period
   min_ind <- which(meteo_date == paste0(sta_yea_cal, "-01-01"))
@@ -162,9 +162,9 @@ optim_wrapper <- function(params = NULL){
   obj_measure <- mean(obj_measure_all)
   
   #Save individual results
-  load(file =  paste0(base_dir, "R/melt_calib/results_stations.Rdata"))
+  load(file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"))
   results_individual <- rbind(results_individual, obj_measure_all)
-  save(results_individual, file =  paste0(base_dir, "R/melt_calib/results_stations.Rdata"), version = 2)
+  save(results_individual, file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"), version = 2)
 
   return(obj_measure)
  

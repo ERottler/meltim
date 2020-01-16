@@ -8,17 +8,8 @@
 #set up----
 
 # devtools::install_github("TillF/ppso")
-library(ppso)
-library(rEchseSnow)
-library(alptempr)
-library(rgeos)
-library(raster)
-library(meltimr)
-library(rfs)
-library(parallel)
-library(doParallel)
-library(lhs)
-library(hydroGOF)
+pacman::p_load(ppso, rEchseSnow, alptempr, rgeos, raster, meltimr, rfs, 
+               parallel, doParallel, lhs, hydroGOF)
 
 #set base direcoty
 base_dir <- "U:/rhine_snow/"
@@ -27,7 +18,7 @@ base_dir <- "U:/rhine_snow/"
 file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
 
 #Wrapper for snow simulation and calculation of bjective function
-source("2_optim_wrapper.R")
+source("melt_calib/optim_wrapper.R")
 
 #Read snow station data
 snow_data_all_1 <- read.table(paste0(base_dir,"data/snow/order_73106_data.txt"), sep = ";", skip = 2, stringsAsFactors = F, na.strings = "-")
@@ -36,10 +27,10 @@ snow_data_all_3 <- read.table(paste0(base_dir,"data/snow/order_74297_data.txt"),
 snow_data_all <- rbind(snow_data_all_1, snow_data_all_2, snow_data_all_3)
 
 #Read station to calibrate
-stat_calib <- read.table(paste0(base_dir, "R/melt_calib/station_calib.txt"), sep = ";", header = T)
+stat_calib <- read.table(paste0(base_dir, "R/meltim/melt_calib/station_calib.txt"), sep = ";", header = T)
 
 #Read initial snow parameters
-snow_params <- read.table(paste0(base_dir, "R/melTim/snow_param.txt"), header = T, sep = ";")
+snow_params <- read.table(paste0(base_dir, "R/meltim/snow_param.txt"), header = T, sep = ";")
 
 sta_yea_sno <- 1970 #start year snow simulation
 end_yea_sno <- 2005 #end year snow simulation
@@ -402,7 +393,7 @@ precs <- precs_all
 snows_stat <- snows_stat_all
 
 save(temps, precs, radi_mea_seri, snows_stat, snow_params, meteo_date, sta_yea_cal, end_yea_cal,
-     file = paste0(base_dir, "R/melt_calib/calib_thread/calib_snow_data.Rdata"), version = 2)
+     file = paste0(base_dir, "R/meltim/melt_calib/calib_thread/calib_snow_data.Rdata"), version = 2)
 
 param_ranges=rbind(#define parameter ranges
   
@@ -457,15 +448,15 @@ max_number_function_calls = 5000
 
 #Save results indivudial stations
 results_individual <- NULL
-save(results_individual, file =  paste0(base_dir, "R/melt_calib/results_stations.Rdata"), version = 2)
+save(results_individual, file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"), version = 2)
 
 res <- optim_dds(objective_function=optim_wrapper, number_of_particles=3, number_of_parameters=NROW(param_ranges), parameter_bounds=param_ranges, initial_estimates=starting.values, lhc_init=T,
-                 logfile="dds.log", projectfile="dds.pro", load_projectfile="no", break_file=NULL, max_wait_iterations=1000, max_number_function_calls=max_number_function_calls, tryCall=F)
+                 logfile="melt_calib/dds.log", projectfile="melt_calib/dds.pro", load_projectfile="no", break_file=NULL, max_wait_iterations=1000, max_number_function_calls=max_number_function_calls, tryCall=F)
 
-plot_optimization_progress(logfile = "dds.log", projectfile = "dds.pro")
+plot_optimization_progress(logfile = "melt_calib/dds.log", projectfile = "melt_calib/dds.pro")
 
-savePlot(filename = paste0("dds_progress1", ".png"), type = "png", device = dev.prev())
-savePlot(filename = paste0("dds_progress2", ".png"), type = "png", device = dev.cur())
+savePlot(filename = paste0("melt_calib/dds_progress1", ".png"), type = "png", device = dev.prev())
+savePlot(filename = paste0("melt_calib/dds_progress2", ".png"), type = "png", device = dev.cur())
 graphics.off()
 
 
@@ -499,14 +490,14 @@ for(i in 2:(ncol(best_all)-1)){
 
 #visu_all----
 
-dds_log <- read.table(paste0(base_dir, "R/melt_calib/dds", ".log"), header = T, sep = "\t")
+dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/dds", ".log"), header = T, sep = "\t")
 
 best_row <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
 
 best_run <- dds_log[best_row, ]
 
 
-load(file =  paste0(base_dir, "R/melt_calib/results_stations.Rdata"))
+load(file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"))
 
 results_individual
 
