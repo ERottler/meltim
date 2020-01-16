@@ -8,13 +8,16 @@
 
 #packages----
 
-# devtools::install_github('ERottler/meltimr')
-
 # remove.packages("meltimr")
 # devtools::install_github('ERottler/meltimr')
 # devtools::install_github('ERottler/rfs')
 # devtools::install_github("laubblatt/phaselag")
-# library("meltimr")
+
+# #ECHSE snow functions in package
+# Rcpp::sourceCpp(paste0(base_dir, "R/meltim/echse_snow.cpp"))
+# Rcpp::Rcpp.package.skeleton(name = "rEchseSnow", cpp_files = paste0(base_dir, "R/meltim/echse_snow.cpp"))
+# install.packages(paste0(base_dir, "R/meltim/rEchseSnow"), repos=NULL, type="source")
+# library(rEchseSnow)
 
 pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2, 
                sp, viridis, rgdal, leaflet, ggmap, zoo, zyp, alptempr, lmomco, 
@@ -50,9 +53,6 @@ my_clust <- makeCluster(n_cores)
 clusterEvalQ(my_clust, pacman::p_load(zoo, zyp, alptempr, lmomco, ncdf4, rEchseSnow, sp, raster, betareg, viridis, rfs, meltimr))
 registerDoParallel(my_clust)
 
-
-tslo_band_14 <- tslo_band
-tslo_band_14_mea <- tslo_band_mea
 #save_files----
 
 load(file = "U:/rhine_snow/R/draft_snow.RData")
