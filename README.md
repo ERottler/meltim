@@ -1,2 +1,2 @@
 # meltim
-sto-R-age for scripts to analyze hydro-climatological data focusing on changes snow melt timing and snow melt contribution to river runoff.
+This repository stores code used to conduct snow simulations using a physically based snow routine with parameter calibration using DDS.

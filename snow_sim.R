@@ -1,14 +1,13 @@
 ###
 
-#Rhine snow - Snow simulations + Meteo/snow analysis on sub-basin scale
+#Snow simulations + Snow/meteo analysis on sub-basin scale
 #Erwin Rottler, University of Potsdam
-#Spring 2019
 
 ###
 
 sta_yea_bas <- 1950
 end_yea_bas <- 2014
-basin_sel <- "basel"        # alp_rhine,  reuss, aare,  moselle, nahe,      neckar,   main,      lahn, basel
+basin_sel <- "basel"        # basel, alp_rhine, reuss, aare, 
 high_stat_thresh <- 2000 #1900
 middle_stat_thresh <- 1000 #900
 
@@ -32,12 +31,6 @@ snow_params$albedoMax         <- dds_log[best_run_ind, which(colnames(dds_log) =
 snow_params$agingRate_tAirPos <- dds_log[best_run_ind, which(colnames(dds_log) == "agingRate_tAirPos")]
 snow_params$agingRate_tAirNeg <- dds_log[best_run_ind, which(colnames(dds_log) == "agingRate_tAirNeg")]
 snow_params$weightAirTemp     <- dds_log[best_run_ind, which(colnames(dds_log) == "weightAirTemp")]
-
-# #ECHSE snow functions in package
-# Rcpp::sourceCpp(paste0(base_dir, "R/meltim/echse_snow.cpp"))
-# Rcpp::Rcpp.package.skeleton(name = "rEchseSnow", cpp_files = paste0(base_dir, "R/meltim/echse_snow.cpp"))
-# install.packages(paste0(base_dir, "R/meltim/rEchseSnow"), repos=NULL, type="source")
-# library(rEchseSnow)
 
 #data prep----
 
@@ -1015,8 +1008,6 @@ range(elevs_d)
 # range(elevs)
 # my_elev_bands <- c(seq(400, 3000, 50), 4000) #Diepoldsau
 my_elev_bands <- seq(250, 3200, 50) #Basel 1km
-# my_elev_bands <- seq(200, 3200, 100) #Basel 1km
-# my_elev_bands <- seq(200, 3200, 75) #Basel 1km
 # my_elev_bands <- c(seq(250, 3000, 50), 4000) #Basel 5km
 # my_elev_bands <- c(seq(350, 3150, 50), 4000) #Reuss
 # my_elev_bands <- c(seq(350, 3550, 50), 4000) #Aare
