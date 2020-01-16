@@ -6,13 +6,32 @@
 
 ###
 
-sta_yea_bas <- 1961
+sta_yea_bas <- 1950
 end_yea_bas <- 2014
-basin_sel <- "basel"        # alp_rhine,  reuss,     aare,  moselle, nahe,      neckar,   main,      lahn, basel
-high_stat_thresh <- 1900 #1900
-middle_stat_thresh <- 900 #900
+basin_sel <- "basel"        # alp_rhine,  reuss, aare,  moselle, nahe,      neckar,   main,      lahn, basel
+high_stat_thresh <- 2000 #1900
+middle_stat_thresh <- 1000 #900
 
 snow_params <- read.table(paste0(base_dir, "R/melTim/snow_param.txt"), header = T, sep = ";")
+
+#Update snow parameter with calibrated values
+dds_log <-  read.table(file = paste0(base_dir, "R/melt_calib/dds.log"), sep = "\t", header = T)
+
+best_run_ind <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
+
+# snow_params$a0                <- dds_log[best_run_ind, which(colnames(dds_log) == "a0")]
+# snow_params$a1                <- dds_log[best_run_ind, which(colnames(dds_log) == "a1")]
+snow_params$kSatSnow          <- dds_log[best_run_ind, which(colnames(dds_log) == "kSatSnow")]
+snow_params$densDrySnow       <- dds_log[best_run_ind, which(colnames(dds_log) == "densDrySnow")]
+snow_params$specCapRet        <- dds_log[best_run_ind, which(colnames(dds_log) == "specCapRet")]
+snow_params$emissivitySnowMin <- dds_log[best_run_ind, which(colnames(dds_log) == "emissivitySnowMin")]
+snow_params$emissivitySnowMax <- dds_log[best_run_ind, which(colnames(dds_log) == "emissivitySnowMax")]
+snow_params$tempAir_crit      <- dds_log[best_run_ind, which(colnames(dds_log) == "tempAir_crit")]
+snow_params$albedoMin         <- dds_log[best_run_ind, which(colnames(dds_log) == "albedoMin")]
+snow_params$albedoMax         <- dds_log[best_run_ind, which(colnames(dds_log) == "albedoMax")]
+snow_params$agingRate_tAirPos <- dds_log[best_run_ind, which(colnames(dds_log) == "agingRate_tAirPos")]
+snow_params$agingRate_tAirNeg <- dds_log[best_run_ind, which(colnames(dds_log) == "agingRate_tAirNeg")]
+snow_params$weightAirTemp     <- dds_log[best_run_ind, which(colnames(dds_log) == "weightAirTemp")]
 
 # #ECHSE snow functions in package
 # Rcpp::sourceCpp(paste0(base_dir, "R/meltim/echse_snow.cpp"))
@@ -210,7 +229,7 @@ radi_snow_day <- ord_day(data_in = radi_sno$gre000d0,
 
 radi_mea <- apply(radi_snow_day, 2, mea_na)
 
-radi_mea_smo <- smoothFFT(radi_mea, sd = 7)
+radi_mea_smo <- smoothFFT(radi_mea, sd = 15)
 # plot(radi_mea_smo, type = "l")
 
 #Syntetic radiation time series based on mean values
@@ -221,6 +240,89 @@ radi_mea_seri <- rep( c(radi_mea_smo, radi_mea_smo[365], rep(radi_mea_smo, 3)), 
 
 #Downscale temperature/precipitation grid using simple lapse-rate based approach
 #lapse rate in basin on daily bases used
+
+#downscale points
+down_points <- function(lon_lat_point_in){
+  
+  res_new <- 1000 # new desirted resolution in [m]
+  
+  d_00 <- lon_lat_point_in
+  d_01 <- d_00 + res_new * 1
+  d_02 <- d_00 + res_new * 2
+  d_03 <- d_00 - res_new * 1
+  d_04 <- d_00 - res_new * 2
+  d_05 <- d_00
+  d_05[1] <- d_05[1] + res_new * 1
+  d_05[2] <- d_05[2] - res_new * 1
+  d_06 <- d_00
+  d_06[1] <- d_06[1] + res_new * 2
+  d_06[2] <- d_06[2] - res_new * 2
+  d_07 <- d_00
+  d_07[1] <- d_07[1] - res_new * 1
+  d_07[2] <- d_07[2] + res_new * 1
+  d_08 <- d_00
+  d_08[1] <- d_08[1] - res_new * 2
+  d_08[2] <- d_08[2] + res_new * 2
+  d_09 <- d_00
+  d_09[1] <- d_09[1] + res_new * 1
+  d_09[2] <- d_09[2] + res_new * 0
+  d_10 <- d_00
+  d_10[1] <- d_10[1] + res_new * 2
+  d_10[2] <- d_10[2] + res_new * 0
+  d_11 <- d_00
+  d_11[1] <- d_11[1] - res_new * 1
+  d_11[2] <- d_11[2] + res_new * 0
+  d_12 <- d_00
+  d_12[1] <- d_12[1] - res_new * 2
+  d_12[2] <- d_12[2] + res_new * 0
+  d_13 <- d_00
+  d_13[1] <- d_13[1] + res_new * 0
+  d_13[2] <- d_13[2] - res_new * 1
+  d_14 <- d_00
+  d_14[1] <- d_14[1] + res_new * 0
+  d_14[2] <- d_14[2] - res_new * 2
+  d_15 <- d_00
+  d_15[1] <- d_15[1] + res_new * 0
+  d_15[2] <- d_15[2] + res_new * 1
+  d_16 <- d_00
+  d_16[1] <- d_16[1] + res_new * 0
+  d_16[2] <- d_16[2] + res_new * 2
+  d_17 <- d_00
+  d_17[1] <- d_17[1] + res_new * 2
+  d_17[2] <- d_17[2] + res_new * 1
+  d_18 <- d_00
+  d_18[1] <- d_18[1] + res_new * 2
+  d_18[2] <- d_18[2] - res_new * 1
+  d_19 <- d_00
+  d_19[1] <- d_19[1] + res_new * 1
+  d_19[2] <- d_19[2] - res_new * 2
+  d_20 <- d_00
+  d_20[1] <- d_20[1] - res_new * 1
+  d_20[2] <- d_20[2] - res_new * 2
+  d_21 <- d_00
+  d_21[1] <- d_21[1] - res_new * 2
+  d_21[2] <- d_21[2] - res_new * 1
+  d_22 <- d_00
+  d_22[1] <- d_22[1] - res_new * 2
+  d_22[2] <- d_22[2] + res_new * 1
+  d_23 <- d_00
+  d_23[1] <- d_23[1] - res_new * 1
+  d_23[2] <- d_23[2] + res_new * 2
+  d_24 <- d_00
+  d_24[1] <- d_24[1] + res_new * 1
+  d_24[2] <- d_24[2] + res_new * 2
+  
+  d_points_raw <- rbind(d_00, d_01, d_02, d_03, d_04, d_05, d_06, d_07, d_08, d_09, d_10, d_11, d_12,
+                        d_13, d_14, d_15, d_16, d_17, d_18, d_19, d_20, d_21, d_22, d_23, d_24)
+  
+  
+  #spatial grip points from lat/lon info
+  d_points <- sp::SpatialPoints(data.frame(lon = d_points_raw[, 1], lat = d_points_raw[, 2]), proj4string =  sp::CRS("+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000
+                    +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"))
+  
+  return(d_points)
+  
+}
 
 #Lapse rate on daily basis from all data points selected
 my_lin_trend <- function(data_in){
@@ -289,6 +391,19 @@ f_petrs_laps <- function(data_in){
   return(temps_down)
 }
 
+
+grid_points_d <- foreach(i = 1:ncol(temps), .combine = 'rbind') %dopar% {
+  
+  d_points <- down_points(grid_points@coords[i, ])
+  
+  d_points@coords
+  
+}
+
+#spatial grid points from lat/lon info
+grid_points_d     <- sp::SpatialPoints(data.frame(lon = grid_points_d[, 1], lat = grid_points_d[, 2]), proj4string =  epsg3035)
+grid_points_d_84  <- sp::spTransform(grid_points_d, CRS = crswgs84)
+
 temps_d <- foreach(i = 1:ncol(temps), .combine = 'cbind') %dopar% {
   
   d_points <- down_points(grid_points@coords[i, ])
@@ -335,6 +450,11 @@ elevs_d <- foreach(i = 1:length(grid_points), .combine = 'c') %dopar% {
 
 
 #snow_simu----
+
+# #if no downscaling > rename
+# temps_d <- temps
+# precs_d <- precs
+# elevs_d <- elevs
 
 #Sonw simulations using physically-based ECHSE snow routine
 
@@ -425,7 +545,7 @@ for(b in 1:length(block_stas)){
       sim_out <- snowModel_inter(
         #Forcings
         precipSumMM = precs_simu[i, k],
-        shortRad = radi_mea_seri[k],
+        shortRad = radi_mea_seri[i],
         tempAir = temps_simu[i, k],
         pressAir = 1000,
         relHumid = 70,
@@ -490,8 +610,18 @@ for(b in 1:length(block_stas)){
   
 }  
 
+#first year as warm up to get snow dynamics going
+#remove first year
+index_next_1Jan <- which(meteo_date == paste0(sta_yea_bas+1,"-01-01"))-1
+snows_d <- snows_d[-(1:index_next_1Jan), ]
+temps_d <- temps_d[-(1:index_next_1Jan), ]
+precs_d <- precs_d[-(1:index_next_1Jan), ]
+date_snow <- meteo_date[-(1:index_next_1Jan)]
 
 #analysis----
+
+snow_max <- apply(snows_d, 2, max_na)
+#length(which(snow_max > 3))
 
 grid_m2 <- 1000*1000 #grid 1 km resolution
 
@@ -509,9 +639,10 @@ for(b in 1:length(block_stas)){
   smea_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
     
     day_ana(snows_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
+            date = date_snow, 
+            start_year = sta_yea_bas+1, 
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = F,
             window_width = 30, 
             method_ana = "mean") #[m]
@@ -526,7 +657,9 @@ for(b in 1:length(block_stas)){
   
 }
 
-smea[, which(snows_d[nrow(snows_d), ] > 5)] <- NA #remove 'glacier' points
+# smea[, which(snows_d[nrow(snows_d), ] > 5)] <- NA #remove 'glacier' points
+
+smea[, which(snow_max > 3)] <- NA #remove snow towers
 
 #Snow volume: mean average
 vmea <- smea * grid_m2
@@ -540,12 +673,13 @@ for(b in 1:length(block_stas)){
   sslo_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
 
     day_ana(snows_calc[, i], 
-            date = meteo_date, 
+            date = date_snow, 
             start_year = sta_yea_bas, 
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = T,
             window_width = 30, 
-            method_ana = "sens_slope") #[m]
+            method_ana = "sens_slope") * 10 #[m/dec]
 
   }
 
@@ -557,7 +691,7 @@ for(b in 1:length(block_stas)){
 
 }
 
-sslo[, which(snows_d[nrow(snows_d), ] > 5)] <- NA #remove 'glacier' points
+sslo[, which(snow_max > 3)] <- NA #remove snow towers
 
 #Snow volume: trends 30 DMA
 vslo <- sslo * grid_m2
@@ -570,6 +704,7 @@ sv_diff <- function(snow_volume_in){
   return(sv_diff)
   
 }
+
 snows_d_dif <- apply(snows_d, 2, sv_diff)
 
 #Snow height diff: mean average
@@ -582,9 +717,10 @@ for(b in 1:length(block_stas)){
   sdif_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
     
     day_ana(snows_calc[, i], 
-            date = meteo_date, 
+            date = date_snow, 
             start_year = sta_yea_bas, 
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = F,
             window_width = 30, 
             method_ana = "mean") #[m]
@@ -599,7 +735,7 @@ for(b in 1:length(block_stas)){
   
 }
 
-sdif[, which(snows_d[nrow(snows_d), ] > 5)] <- NA #remove 'glacier' points
+sdif[, which(snow_max > 3)] <- NA #remove snow towers
 
 #Snow volume diff: mean average
 vdif <- sdif * grid_m2
@@ -613,12 +749,13 @@ for(b in 1:length(block_stas)){
   sdis_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
 
     day_ana(snows_calc[, i], 
-            date = meteo_date, 
+            date = date_snow, 
             start_year = sta_yea_bas, 
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = T,
             window_width = 30, 
-            method_ana = "sens_slope") #[m]
+            method_ana = "sens_slope") * 10#[m/dec]
 
   }
 
@@ -630,34 +767,67 @@ for(b in 1:length(block_stas)){
 
 }
 
-sdis[, which(snows_d[nrow(snows_d), ] > 5)] <- NA #remove 'glacier' points
+sdis[, which(snow_max > 3)] <- NA #remove snow towers
 
 #Snow volume diff: trends 30 DMA
 vdis <- sdis * grid_m2
 
 #Temperature: mean average
 for(b in 1:length(block_stas)){
-  
+
   temps_calc <- temps_d[, block_stas[b]:block_ends[b]]
+
+  print(paste(Sys.time(),"Average mean temperature", "Block:", b, "out of", length(block_stas)))
+
+  tmea_block <- foreach(i = 1:ncol(temps_calc), .combine = 'cbind') %dopar% {
+
+    day_ana(temps_calc[, i],
+            date = date_snow,
+            start_year = sta_yea_bas,
+            end_year = end_yea_bas,
+            break_day = 274,
+            do_ma = F,
+            window_width = 30,
+            method_ana = "mean") #[°C]
+
+  }
+
+  if(b == 1){
+    tmea <- tmea_block
+  }else{
+    tmea <- cbind(tmea, tmea_block)
+  }
+
+}
+
+#Temperature: mean average 5km x 5km
+block_size_5km <- 1000
+block_stas_5km <- c(1, seq(block_size+1, ncol(temps), by = block_size))
+block_ends_5km <- c(seq(block_size, ncol(temps), by = block_size), ncol(temps))
+
+for(b in 1:length(block_stas_5km)){
   
-  print(paste(Sys.time(),"Average median temperature", "Block:", b, "out of", length(block_stas)))
+  temps_calc <- temps[, block_stas_5km[b]:block_ends_5km[b]]
+  
+  print(paste(Sys.time(),"Average mean temperature", "Block:", b, "out of", length(block_stas_5km)))
   
   tmea_block <- foreach(i = 1:ncol(temps_calc), .combine = 'cbind') %dopar% {
     
-    day_ana(temps_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
+    day_ana(temps_calc[, i],
+            date = meteo_date,
+            start_year = sta_yea_bas,
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = F,
-            window_width = 30, 
+            window_width = 30,
             method_ana = "mean") #[°C]
     
   }
   
   if(b == 1){
-    tmea <- tmea_block
+    tmea_5km <- tmea_block
   }else{
-    tmea <- cbind(tmea, tmea_block)
+    tmea_5km <- cbind(tmea_5km, tmea_block)
   }
   
 }
@@ -671,12 +841,13 @@ for(b in 1:length(block_stas)){
 
   tslo_block <- foreach(i = 1:ncol(temps_calc), .combine = 'cbind') %dopar% {
 
-    day_ana(temps_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
+    day_ana(temps_calc[, i],
+            date = date_snow,
+            start_year = sta_yea_bas,
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = T,
-            window_width = 30, 
+            window_width = 30,
             method_ana = "sens_slope") * 10 #[°C/dec]
 
   }
@@ -691,29 +862,30 @@ for(b in 1:length(block_stas)){
 
 #Precipitation: mean average
 for(b in 1:length(block_stas)){
-  
+
   precs_calc <- precs_d[, block_stas[b]:block_ends[b]]
-  
+
   print(paste(Sys.time(),"Average mean precipitation", "Block:", b, "out of", length(block_stas)))
-  
+
   pmea_block <- foreach(i = 1:ncol(precs_calc), .combine = 'cbind') %dopar% {
-    
-    day_ana(precs_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
+
+    day_ana(precs_calc[, i],
+            date = date_snow,
+            start_year = sta_yea_bas,
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = F,
-            window_width = 30, 
+            window_width = 30,
             method_ana = "mean") #[mm]
-    
+
   }
-  
+
   if(b == 1){
     pmea <- pmea_block
   }else{
     pmea <- cbind(pmea, pmea_block)
   }
-  
+
 }
 
 #Precipitation: 30 DMA trends
@@ -725,12 +897,13 @@ for(b in 1:length(block_stas)){
 
   pslo_block <- foreach(i = 1:ncol(precs_calc), .combine = 'cbind') %dopar% {
 
-    day_ana(precs_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
+    day_ana(precs_calc[, i],
+            date = date_snow,
+            start_year = sta_yea_bas,
             end_year = end_yea_bas,
+            break_day = 274,
             do_ma = T,
-            window_width = 30, 
+            window_width = 30,
             method_ana = "sens_slope")  * 10 #[mm/dec]
 
   }
@@ -742,60 +915,60 @@ for(b in 1:length(block_stas)){
   }
 
 }
-
-#Evaportranspiration: median average
-for(b in 1:length(block_stas)){
-
-  petrs_calc <- petrs_d[, block_stas[b]:block_ends[b]]
-
-  print(paste(Sys.time(),"Average mean evapotranspiration", "Block:", b, "out of", length(block_stas)))
-
-  emea_block <- foreach(i = 1:ncol(petrs_calc), .combine = 'cbind') %dopar% {
-
-    day_ana(petrs_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
-            end_year = end_yea_bas,
-            do_ma = F,
-            window_width = 30, 
-            method_ana = "mean") #[mm]
-
-  }
-
-  if(b == 1){
-    emea <- emea_block
-  }else{
-    emea <- cbind(emea, emea_block)
-  }
-
-}
-
-#Evapotranspiration: 30 DMA trends
-for(b in 1:length(block_stas)){
-
-  petrs_calc <- petrs_d[, block_stas[b]:block_ends[b]]
-
-  print(paste(Sys.time(),"30DMA trends evapotranspiration", "Block:", b, "out of", length(block_stas)))
-
-  eslo_block <- foreach(i = 1:ncol(petrs_calc), .combine = 'cbind') %dopar% {
-
-    day_ana(petrs_calc[, i], 
-            date = meteo_date, 
-            start_year = sta_yea_bas, 
-            end_year = end_yea_bas,
-            do_ma = T,
-            window_width = 30, 
-            method_ana = "sens_slope") * 10 #[mm/dec]
-
-  }
-
-  if(b == 1){
-    eslo <- eslo_block
-  }else{
-    eslo <- cbind(eslo, eslo_block)
-  }
-
-}
+# 
+# #Evaportranspiration: median average
+# for(b in 1:length(block_stas)){
+# 
+#   petrs_calc <- petrs_d[, block_stas[b]:block_ends[b]]
+# 
+#   print(paste(Sys.time(),"Average mean evapotranspiration", "Block:", b, "out of", length(block_stas)))
+# 
+#   emea_block <- foreach(i = 1:ncol(petrs_calc), .combine = 'cbind') %dopar% {
+# 
+#     day_ana(petrs_calc[, i],
+#             date = meteo_date,
+#             start_year = sta_yea_bas,
+#             end_year = end_yea_bas,
+#             do_ma = F,
+#             window_width = 30,
+#             method_ana = "mean") #[mm]
+# 
+#   }
+# 
+#   if(b == 1){
+#     emea <- emea_block
+#   }else{
+#     emea <- cbind(emea, emea_block)
+#   }
+# 
+# }
+# 
+# #Evapotranspiration: 30 DMA trends
+# for(b in 1:length(block_stas)){
+# 
+#   petrs_calc <- petrs_d[, block_stas[b]:block_ends[b]]
+# 
+#   print(paste(Sys.time(),"30DMA trends evapotranspiration", "Block:", b, "out of", length(block_stas)))
+# 
+#   eslo_block <- foreach(i = 1:ncol(petrs_calc), .combine = 'cbind') %dopar% {
+# 
+#     day_ana(petrs_calc[, i],
+#             date = meteo_date,
+#             start_year = sta_yea_bas,
+#             end_year = end_yea_bas,
+#             do_ma = T,
+#             window_width = 30,
+#             method_ana = "sens_slope") * 10 #[mm/dec]
+# 
+#   }
+# 
+#   if(b == 1){
+#     eslo <- eslo_block
+#   }else{
+#     eslo <- cbind(eslo, eslo_block)
+#   }
+# 
+# }
 
 
 #elev_ranges----
@@ -838,13 +1011,30 @@ f_elev_bands <- function(data_in, elev_bands = my_elev_bands, func_aggr = "mean"
 }
 
 range(elevs_d)
-my_elev_bands <- c(seq(400, 3000, 50), 4000) #Diepoldsau
+# hist(elevs_d)
+# range(elevs)
+# my_elev_bands <- c(seq(400, 3000, 50), 4000) #Diepoldsau
+my_elev_bands <- seq(250, 3200, 50) #Basel 1km
+# my_elev_bands <- seq(200, 3200, 100) #Basel 1km
+# my_elev_bands <- seq(200, 3200, 75) #Basel 1km
+# my_elev_bands <- c(seq(250, 3000, 50), 4000) #Basel 5km
+# my_elev_bands <- c(seq(350, 3150, 50), 4000) #Reuss
+# my_elev_bands <- c(seq(350, 3550, 50), 4000) #Aare
 
 smea_band <- f_elev_bands(data_in = smea, func_aggr = "mean")
+sslo_band <- f_elev_bands(data_in = sslo, func_aggr = "mean")
 vmea_band <- f_elev_bands(data_in = vmea, func_aggr = "sum")
 vslo_band <- f_elev_bands(data_in = vslo, func_aggr = "sum")
 vdif_band <- f_elev_bands(data_in = vdif, func_aggr = "sum")
 vdis_band <- f_elev_bands(data_in = vdis, func_aggr = "sum")
+
+snows_d[, which(snow_max > 3)] <- NA #remove snow towers
+
+snows_d_band <- f_elev_bands(data_in = snows_d, func_aggr = "mean")
+temps_d_band <- f_elev_bands(data_in = temps_d, func_aggr = "mean")
+precs_d_band <- f_elev_bands(data_in = precs_d, func_aggr = "mean")
+
+svolu_d_band <- f_elev_bands(data_in = snows_d, func_aggr = "sum")*grid_m2
 
 #Syntetic meta data info for grid points to use alptempr functions
 HS_amount <- length(which(my_elev_bands[-length(my_elev_bands)] > high_stat_thresh))
@@ -873,21 +1063,24 @@ pslo_band <- f_elev_bands(data_in = pslo, func_aggr = "mean")
 colnames(pslo_band) <- paste0("band", 1:ncol(pslo_band))
 pslo_band_mea <- apply(pslo_band, 2, mea_na)#annual average values
 
-emea_band <- f_elev_bands(data_in = emea, func_aggr = "mean")
-colnames(emea_band) <- paste0("band", 1:ncol(emea_band))
-emea_band_mea <- apply(emea_band, 2, mea_na)#annual average values
+tmea_band_5km <- f_elev_bands(data_in = tmea_5km, func_aggr = "mean", meta_dat = elevs)
+colnames(tmea_band_5km) <- paste0("band", 1:ncol(tmea_band_5km))
+tmea_band_mea_5km <- apply(tmea_band_5km, 2, mea_na)#annual average values
 
-eslo_band <- f_elev_bands(data_in = eslo, func_aggr = "mean")
-colnames(eslo_band) <- paste0("band", 1:ncol(eslo_band))
-eslo_band_mea <- apply(eslo_band, 2, mea_na)#annual average values
+# emea_band <- f_elev_bands(data_in = emea, func_aggr = "mean")
+# colnames(emea_band) <- paste0("band", 1:ncol(emea_band))
+# emea_band_mea <- apply(emea_band, 2, mea_na)#annual average values
+# 
+# eslo_band <- f_elev_bands(data_in = eslo, func_aggr = "mean")
+# colnames(eslo_band) <- paste0("band", 1:ncol(eslo_band))
+# eslo_band_mea <- apply(eslo_band, 2, mea_na)#annual average values
 
 
-
-#visu----
+#visu_snow_bands----
 
 #Plot: Snow variables
 
-plot_snow <- vdis_band #smea_band, vmea_band, vslo_band, vdif_band, vdis_band
+plot_snow <- vslo_band #smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band
 col_zero <- T #color range center at zero
 
 x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
@@ -936,6 +1129,9 @@ box()
 
 
 
+
+#visu_meteo_comp----
+
 #Plot melt compensation: Trend snow volume diff over elevation
 melt_comp <- apply(vdis_band, 1, sum_na)
 
@@ -958,7 +1154,7 @@ axis(2, mgp=c(3, 0.15, 0), tck = -0.001)
 
 box(lwd = 0.7)
 
-#Plot meteo
+#visu_meteo----
 
 par(mfrow = c(1, 2))
 
@@ -968,11 +1164,17 @@ plot_cycl_elev(data_in = tmea_band, data_mk = tmea_band, data_in_me = tmea_band_
                no_col = F, show_mk = F, aggr_cat_mean = T, with_hom_dat = F,
                smooth_val = 0.2, mk_sig_level = 0.05, add_st_num = T)
 
+# plot_cycl_elev(data_in = tmea_band_5km, data_mk = tmea_band_5km, data_in_me = tmea_band_mea_5km,
+#                data_meta = meta_grid_bands, main_text = paste0("Temperature [°C]"),
+#                margins_1 = c(1.4,1.8,1.8,0.2), margins_2 = c(1.4,0.2,1.8,3.5),
+#                no_col = F, show_mk = F, aggr_cat_mean = T, with_hom_dat = F,
+#                smooth_val = 0.2, mk_sig_level = 0.05, add_st_num = T)
+
 plot_cycl_elev(data_in = tslo_band, data_mk = tslo_band, data_in_me = tslo_band_mea,
                data_meta = meta_grid_bands, main_text = paste0("Temperature [°C/dec]"),
                margins_1 = c(1.4,1.8,1.8,0.2), margins_2 = c(1.4,0.2,1.8,3.5),
                no_col = F, show_mk = F, aggr_cat_mean = T, with_hom_dat = F,
-               smooth_val = 0.2, mk_sig_level = 0.05, add_st_num = T)
+               smooth_val = 0.1, mk_sig_level = 0.05, add_st_num = T)
 
 plot_cycl_elev(data_in = pmea_band, data_mk = pmea_band, data_in_me = pmea_band_mea,
                data_meta = meta_grid_bands, main_text= paste0("Precipitation [mm]"),
@@ -999,6 +1201,64 @@ plot_cycl_elev(data_in = eslo_band, data_mk = eslo_band, data_in_me = eslo_band_
                smooth_val = 0.2, mk_sig_level = 0.05, add_st_num = F)
 
 
+#visu_spatial----
+
+snows_d_mea <- apply(snows_d, 2, mean)
+temps_d_mea <- apply(temps_d, 2, mean)
+precs_d_mea <- apply(precs_d, 2, mean)
+
+sno_vol_basin <- apply(snows_d, 1, sum_na) * 1000 * 1000
+prec_basin <- apply(precs_d, 1, mea_na) * area_m2 / 1000 #[m³]
+
+#corp DEM sub-basin area
+my_ext <- extent(basin)
+
+my_box <- as(my_ext, 'SpatialPolygons')
+dem_cro_swiss <- raster::crop(dem, extent(my_box))
+dem_sub_swiss <- mask(dem_cro, my_box)
+
+val2col <- function(val_in){
+  
+  # dat_ref <- snows_d_mea
+  # dat_ref <- temps_d_mea
+  dat_ref <- precs_d_mea
+  
+  val_in <- log(val_in)
+  dat_ref_log <- log(dat_ref)
+  
+  # my_col <- colorRampPalette(c("white", viridis(9, direction = 1)[c(3,4)], "cadetblue3", "grey80",
+  #                              "yellow2","gold", "orange2", "orangered2"))(200)
+  my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
+  
+  col_ind <- round((val_in-min_na(dat_ref_log)) / (max_na(dat_ref_log)-min_na(dat_ref_log)) * 200)
+  
+  col_out <- my_col[col_ind]
+  
+}
+
+# cols_spat <- foreach(i = 1:length(snows_d_mea), .combine = 'cbind') %dopar% {
+#   
+#   val2col(snows_d_mea[i])
+#   
+# }
+
+cols_spat <- foreach(i = 1:length(temps_d_mea), .combine = 'cbind') %dopar% {
+  
+  # val2col(temps_d_mea[i])
+  val2col(precs_d_mea[i])
+  
+}
+
+plot(dem_sub_swiss, col = colorRampPalette(c("white", "black"))(200))
+plot(basin, add =T)
+
+points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, col = cols_spat, cex = 0.2)
+
+range(dem_ele)
+range(elevs_d)
+
+hist(elevs_d, breaks = my_elev_bands)
+hist(dem_ele, breaks = my_elev_bands)
 
 
 
@@ -1006,4 +1266,241 @@ plot_cycl_elev(data_in = eslo_band, data_mk = eslo_band, data_in_me = eslo_band_
 
 
 
+
+swi_region <- st_bbox(c(xmin = 3950000, xmax = 4400000,
+                        ymin = 2500000, ymax = 2850000))
+
+swi_ele_map = tm_shape(dem, bbox = swi_region) +
+  tm_raster(style = "cont", palette = "Greys", n = 20, legend.show = F) +
+  tm_shape(basin) + tm_borders(col = "red3", alpha = 1, lwd = 2)
+
+swi_ele_map
+
+
+snows_d_mea <- apply(snows_d, 2, mean)
+
+plot(grid_points_d_84[1:100])
+plot(test[1:5])
+
+hist(dem_ele, nclass = 50)
+
+
+
+
+
+
+#melt_ext----
+
+#Test spatial coherence results
+points_sel <- which(grid_points_d@coords[, 1] > med_na(grid_points_d@coords[, 1]))
+points_sel <- which(grid_points@coords[, 1] > min_na(grid_points@coords[, 1]))
+
+range(elevs_d[points_sel])
+my_elev_bands_sel <- seq(400, 3000, 50)
+
+svolu_d_band_sel <- f_elev_bands(data_in = snows_d[, points_sel], 
+                                 elev_bands = my_elev_bands_sel,
+                                 func_aggr = "sum", 
+                                 meta_dat = elevs_d[points_sel])*grid_m2 
+
+#Bands calculate
+yea_min_mag_bands_14 <- NULL
+yea_min_doy_bands_14 <- NULL
+
+for(i in 1:ncol(svolu_d_band_sel)){
+  
+  swe_band <- svolu_d_band_sel[, i]
+  
+  swe_band_dif <- c(NA, diff(swe_band))
+  
+  swe_band_dif[which(swe_band_dif > 0)] <- 0
+  
+  #Moving average filter
+  swe_band_dif_ma_14 <- rollapply(data = swe_band_dif, width = 14,
+                                  FUN = sum_na, align = "center", fill = NA)
+  
+  #Order data by day
+  data_day_14 <- ord_day(data_in = swe_band_dif_ma_14,
+                         date = date_snow,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274,
+                         do_ma = F,
+                         window_width = 30)
+  
+  min_doy <- function(data_in){
+    
+    doy_min <- as.numeric(which(data_in == min_na(data_in)))
+    
+    if(length(doy_min) > 1){
+      doy_min <- mea_na(doy_min)
+    }
+    
+    return(doy_min)
+  }
+  
+  yea_min_mag_14 <- apply(data_day_14, 1, min_na)
+  yea_min_doy_14 <- apply(data_day_14, 1, min_doy)
+  
+  yea_min_mag_bands_14 <- cbind(yea_min_mag_bands_14, yea_min_mag_14)
+  yea_min_doy_bands_14 <- cbind(yea_min_doy_bands_14, yea_min_doy_14)
+  
+}
+
+freq_bands_1 <- NULL
+freq_bands_2 <- NULL
+freq_diff_all <- NULL
+length_bands_all <- NULL
+width_over <- 14
+
+for(b in 1:ncol(svolu_d_band_sel)){
+  
+  band_sel <- b  
+  
+  bands_frequ_1 <- NULL
+  bands_lengt_1 <- NULL
+  for(y in 1:30){
+    
+    mid_day <- yea_min_doy_bands_14[y, band_sel]
+    min_day <- mid_day - width_over
+    max_day <- mid_day + width_over
+    melt_window <- min_day:max_day
+    
+    bands_asso_1 <- which(yea_min_doy_bands_14[y, ] > min_day & yea_min_doy_bands_14[y, ] < max_day)
+    
+    bands_frequ_1 <- c(bands_frequ_1, bands_asso_1)
+    bands_lengt_1 <- c(bands_lengt_1, length(bands_asso_1))
+    
+  }
+  hist_1 <- hist(bands_frequ_1, breaks = seq(from = 0.5, to = ncol(svolu_d_band_sel)+0.5, by = 1), plot = F)
+  
+  bands_frequ_2 <- NULL
+  bands_lengt_2 <- NULL
+  for(x in 31:60){
+    
+    # print(y)
+    mid_day <- yea_min_doy_bands_14[x, band_sel]
+    min_day <- mid_day - width_over
+    max_day <- mid_day + width_over
+    melt_window <- min_day:max_day
+    
+    bands_asso_2 <- which(yea_min_doy_bands_14[x, ] > min_day & yea_min_doy_bands_14[x, ] < max_day)
+    
+    bands_frequ_2 <- c(bands_frequ_2, bands_asso_2)
+    bands_lengt_2 <- c(bands_lengt_2, length(bands_asso_2))
+    
+  }
+  hist_2 <- hist(bands_frequ_2, breaks = seq(from = 0.5, to = ncol(svolu_d_band_sel)+0.5, by = 1), plot = F)
+  
+  freq_diff <- hist_2$counts - hist_1$counts
+  
+  freq_bands_1 <- cbind(freq_bands_1, hist_1$counts)
+  freq_bands_2 <- cbind(freq_bands_2, hist_2$counts)
+  freq_diff_all <- cbind(freq_diff_all, freq_diff)
+  length_bands_all <- cbind(length_bands_all, bands_lengt_1, bands_lengt_2)
+  
+}
+
+
+pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/bands_asso.pdf", width = 8, height = 5)
+
+band_test <- 28 #my_elev_bands[band_test]
+col_1 <- viridis(9, direction = 1)[4] 
+col_2 <- "darkred"
+
+par(mar = c(2.5, 2.5, 2, 0.2))
+
+plot(freq_bands_1[, band_test], type = "h", col = alpha(col_1, alpha = 0.5), lwd = 7, ylab = "", xlab = "", 
+     axes = F, lend = 2, xaxs = "i", yaxs = "i", ylim = c(0, 32), xlim = c(0, 60))
+abline(v = band_test, col = "black", lwd = 1.5)
+legend("topleft", c("1985-2014", "1954-1984"), col = c(col_2, col_1), pch = 19)
+par(new = T)
+plot(freq_bands_2[, band_test], type = "h", col = alpha(col_2, alpha = 0.5), lwd = 7, ylab = "", xlab = "", 
+     axes = F, lend = 2, xaxs = "i", yaxs = "i", ylim = c(0, 32), xlim = c(0, 60))
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("Frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("a) Frequency concurrent melt (elevation band 1550-1600 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+box()
+
+dev.off()
+
+
+pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/bands_chang.pdf", width = 8, height = 5)
+
+par(mar = c(2.5, 2.5, 2.0, 0.2))
+
+plot(freq_diff_all[band_test, ], type = "n", axes = F, ylab = "", xlab = "", xaxs = "i", yaxs = "i", 
+     xlim = c(0, 60), ylim = c(-9, 9))
+abline(v = band_test, col = "black", lwd = 1.5)
+lines(freq_diff_all[band_test, ], lwd = 2, col = "grey55")
+polygon(x = c(0.999, 1:59) , y = c(0, freq_diff_all[band_test, ]), col = alpha("grey55", alpha = 0.7), border = F)
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+abline(h = 0, lty = "dotted")
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("Change frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("b) Changes in concurrent melt (elevation band 1550-1600 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+box()
+
+dev.off()
+
+
+pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/forgot_dim.pdf", width = 8, height = 5)
+
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "grey90"))(50)
+cols_max <- colorRampPalette(c("grey90", "gold3",  "orange3", "orangered4", "orangered4", "darkred"))(50)
+cols_mel <- c(cols_min, cols_max)
+
+layout(matrix(c(rep(1, 7), 2),
+              1, 8), widths=c(), heights=c())
+
+par(mar = c(3.5, 3.5, 2.5, 0.2))
+
+image(x = 1:nrow(freq_diff_all),
+      y = 1:ncol(freq_diff_all),
+      z = freq_diff_all, 
+      col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), axes = F, ylab = "", xlab = "")
+elevs_sel <- c(6, 16, 26, 36, 46, 56)-3
+axis(1, at = elevs_sel, labels = my_elev_bands_sel[elevs_sel], mgp=c(3, 0.55, 0), tck = -0.005, cex.axis = 1.4)
+axis(2, at = elevs_sel, labels = my_elev_bands_sel[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("Elevation band [m]", side = 2, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("c) Changes in concurrent melt (all elevation bands)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("[-]", side = 3, adj = 1.0, line = 0.2, cex = 1.1)
+box()
+
+# points(c(18, 27, 35, 43, 51), c(18, 27, 35, 43, 51), pch = 21, cex = 2, col = "black")
+
+par(mar = c(3.5, 0.2, 2.5, 4.0))
+
+alptempr::image_scale(as.matrix(freq_diff_all), col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+# mtext(lab_unit, side = 3, line = 0.3, cex = 1)
+box()
+
+dev.off()
+
+
+#sc_frac----
+
+sc <- snows_d
+for(i in 1:nrow(sc)){
+ 
+  print(i)
+  row_sel <- i
+  
+  sc[row_sel, which(sc[row_sel, ] > 0.01)] <- 1
+  sc[row_sel, which(sc[row_sel, ] < 0.01)] <- 0
+  
+}
+
+sc_frac <- apply(sc, 1, sum_na)/ncol(sc)
+
+plot(sc_frac[100:2000], type = "l")
+
+save(sc_frac, file = "U:/rhine_snow/R/sc_frac.RData")
 

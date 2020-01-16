@@ -82,8 +82,8 @@ for(i in 1:length(lag_years)){
   
 }
 
-slo_dec <- round(sens_slope(my_lags)*10, 2)
-slo_all <- round(sens_slope(my_lags)*length(lag_years), 2)
+slo_dec <- round(sens_slo(my_lags)*10, 2)
+slo_all <- round(sens_slo(my_lags)*length(lag_years), 2)
 
 par(mar = c(2.2, 2.2, 2, 0.2))
 

@@ -142,7 +142,7 @@ mk_sig <- function(data_in, cover_thresh = 0.9){
 }
 
 day_cross_slo <- apply(day_cross, 1, sens_slo) * 10 * -1 # [day/dec]
-day_cross_day <- apply(day_cross, 1, sens_slo) * 10 * -1 *decs # [days]
+day_cross_day <- apply(day_cross, 1, sens_slo) * 10 * -1 *length(sta_yea_cla:end_yea_cla)/10 # [days]
 day_cross_sig <- apply(day_cross, 1, mk_sig)
 day_cross_mea <- apply(day_cross, 1, mea_na)
 
@@ -262,6 +262,58 @@ mtext(data_meta, side = 3, line = 0.1, cex = 1.0)
 mtext("01.11.2006- 31.10.2007", side = 3, line = 0.1, cex = 0.7, adj = 0.0)
 
 
+#rasthy----
+
+cols_min <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "white"))(100)
+cols_max <- grDevices::colorRampPalette(c("white", "yellow2","gold2", "orange2", "orangered3", "orangered4", "red4"))(100)
+cols_hydro <- c(cols_min, cols_max)
+
+max_break <- max_na(data_day)
+min_break <- min_na(data_day)
+qua_break <- quantile(data_day, probs = 0.6, type = 8, na.rm = T)
+
+breaks_1 <- lseq(min_break, qua_break, length.out = length(cols_hydro)/2)
+breaks_2 <- lseq(qua_break+0.01, max_break, length.out = length(cols_hydro)/2 + 1)
+breaks_2[length(breaks_2)] <- breaks_2[length(breaks_2)] + 0.1
+
+breaks_hydro <- c(breaks_1, breaks_2)
+
+par(mar = c(1.6, 3, 1.6, 0.1))
+
+layout(matrix(c(1,1,1,1,1,1,1,2),
+              1, 8), widths=c(), heights=c())
+
+image(x = 1:ncol(data_day),
+      y = 1:nrow(data_day),
+      z = t(data_day), 
+      col = cols_hydro, 
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.02)#plot ticks
+if(break_day == 304){
+  axis(1, at = x_axis_lab, c("N","D","J","F","M","A","M","J","J","A","S","O"), tick = FALSE,
+       col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+}
+if(break_day == 274){
+  axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+       col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+}
+mtext("Year", side = 2, line = 1.5, cex = 0.8)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.001)
+mtext(data_meta, side = 3, line = 0.1, cex = 1.0)
+box()
+
+par(mar = c(1.6, 0.1, 1.6, 1.6))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.15, 0), tck = -0.08)
+mtext("[m³/s]", side = 3, line = 0.1, cex = 0.8)
+
+box()
+
+
 #export----
 
 data_bru <- data_mea
@@ -278,7 +330,30 @@ my_lags_bru <- my_lags
 slo_dec_bru <- slo_dec
 slo_all_bru <- slo_all
   
+smea_band_die <- smea_band
+sslo_band_die <- sslo_band
+vmea_band_die <- vmea_band
+vslo_band_die <- vslo_band
+vdif_band_die <- vdif_band
+vdis_band_die <- vdis_band
+my_elev_bands_die <- my_elev_bands
   
+tmea_band_die     <- tmea_band
+tmea_band_mea_die <- tmea_band_mea
+tslo_band_die     <- tslo_band
+tslo_band_mea_die <- tslo_band_mea
+pmea_band_die     <- pmea_band 
+pmea_band_mea_die <- pmea_band_mea
+pslo_band_die     <- pslo_band 
+pslo_band_mea_die <- pslo_band_mea
+emea_band_die     <- emea_band
+emea_band_mea_die <- emea_band_mea
+eslo_band_die     <- eslo_band
+eslo_band_mea_die <- eslo_band_mea
+
+visu_day_mar <- visu_day
+visu_yea_mar <- visu_yea
+
 load(paste0(base_dir, "R/meltim/meltim.Rdata"))
 
 save(data_dom, dat1_dom, dat2_dom, meta_dom,
@@ -321,6 +396,44 @@ save(data_dom, dat1_dom, dat2_dom, meta_dom,
      day_cross_bru, day_cross_mea_bru, day_cross_slo_bru, day_cross_day_bru,
      my_lags_bru, slo_dec_bru, slo_all_bru,
      
+     data_ber, dat1_ber, dat2_ber, meta_ber,
+     day_cross_ber, day_cross_mea_ber, day_cross_slo_ber, day_cross_day_ber,
+     my_lags_ber, slo_dec_ber, slo_all_ber,
+     
+     data_mur, dat1_mur, dat2_mur, meta_mur,
+     day_cross_mur, day_cross_mea_mur, day_cross_slo_mur, day_cross_day_mur,
+     my_lags_mur, slo_dec_mur, slo_all_mur,
+     
+     data_unt, dat1_unt, dat2_unt, meta_unt,
+     day_cross_unt, day_cross_mea_unt, day_cross_slo_unt, day_cross_day_unt,
+     my_lags_unt, slo_dec_unt, slo_all_unt,
+     
+     data_mel, dat1_mel, dat2_mel, meta_mel,
+     day_cross_mel, day_cross_mea_mel, day_cross_slo_mel, day_cross_day_mel,
+     my_lags_mel, slo_dec_mel, slo_all_mel,
+     
+     data_max, dat1_max, dat2_max, meta_max,
+     day_cross_max, day_cross_mea_max, day_cross_slo_max, day_cross_day_max,
+     my_lags_max, slo_dec_max, slo_all_max,
+     
+     smea_band_bas, sslo_band_bas, vmea_band_bas, vslo_band_bas, 
+     vdif_band_bas, vdis_band_bas, my_elev_bands_bas,
+     
+     tmea_band_bas, tmea_band_mea_bas, tslo_band_bas, tslo_band_mea_bas,
+     pmea_band_bas, pmea_band_mea_bas, pslo_band_bas, pslo_band_mea_bas,
+     emea_band_bas, emea_band_mea_bas, eslo_band_bas, eslo_band_mea_bas,
+     
+     smea_band_die, sslo_band_die, vmea_band_die, vslo_band_die, 
+     vdif_band_die, vdis_band_die, my_elev_bands_die,
+     
+     tmea_band_die, tmea_band_mea_die, tslo_band_die, tslo_band_mea_die,
+     pmea_band_die, pmea_band_mea_die, pslo_band_die, pslo_band_mea_die,
+     emea_band_die, emea_band_mea_die, eslo_band_die, eslo_band_mea_die,
+     
+     meta_sel,
+     
+     visu_day_dom, visu_yea_dom, 
+     visu_day_mar, visu_yea_mar,
   
      file = paste0(base_dir, "R/meltim/meltim.Rdata"))
 
@@ -328,3 +441,14 @@ save(data_dom, dat1_dom, dat2_dom, meta_dom,
 
 plot(data_day[100, ], type = "l")
 abline(v = c(54,62))
+
+
+#exp_app----
+
+save(data_day,
+     
+     file = paste0("U:/RhineFlow/rhine_snow/R/meltimr/inst/shiny_app/meltApp/data/meltApp.Rdata"))
+
+
+
+
