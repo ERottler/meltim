@@ -7,14 +7,14 @@
 
 sta_yea_bas <- 1950
 end_yea_bas <- 2014
-basin_sel <- "basel"        # basel, alp_rhine, reuss, aare, 
+# basin_sel <- "basel"        # basel, alp_rhine, reuss, aare, 
 high_stat_thresh <- 2000 #1900
 middle_stat_thresh <- 1000 #900
 
 snow_params <- read.table(paste0(base_dir, "R/melTim/snow_param.txt"), header = T, sep = ";")
 
 #Update snow parameter with calibrated values
-dds_log <-  read.table(file = paste0(base_dir, "R/melt_calib/dds.log"), sep = "\t", header = T)
+dds_log <-  read.table(file = paste0(base_dir, "R/meltim/melt_calib/dds.log"), sep = "\t", header = T)
 
 best_run_ind <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
 
@@ -50,11 +50,14 @@ epsg3035 <- sp::CRS("+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000
 
 #Load DEM
 # dem = raster(paste0(file_dir, "morph/dem.asc"), crs = epsg3035)
-dem = raster(paste0(base_dir, "data/basins_shp/eu_dem_500_fil.tif"))
+dem = raster(paste0(base_dir, "data/eu_dem/processed/eu_dem_1000.tif"))
 
 #Load basin boundaries (shapefile delineated beforehand using Q-GIS)
-my_basin <- paste0(base_dir, "data/basins_shp/", basin_sel, ".shp")
-basin <- rgdal::readOGR(dsn = my_basin)
+# my_basin <- paste0(base_dir, "data/basins_shp/", basin_sel, ".shp")
+# basin <- rgdal::readOGR(dsn = my_basin)
+basins <-  rgdal::readOGR(dsn = "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU/ezg_kombiniert.shp", encoding = "UTF8")
+basin <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(dem, asText = T))
+basin_buf <- buffer(basin, width = 8000)
 
 #corp DEM sub-basin area
 dem_cro <- raster::crop(dem, extent(basin))
@@ -72,7 +75,7 @@ area_m2 <- area(basin)
 # hist(dem_ele, nclass = 100)
 
 #Transform projection WGS84
-basin_84 <- sp::spTransform(basin, CRS = crswgs84)
+basin_buf_84 <- sp::spTransform(basin_buf, CRS = crswgs84)
 # dem_84    <- raster::projectRaster(dem, crs = crswgs84)
 
 #get lat/lon/time of .nc meteo data
@@ -87,13 +90,13 @@ date_count <- date_max_index - date_min_index +1
 meteo_date <- date[date_min_index:date_max_index]
 
 #extract coordinates from basin shapefile
-basin_coords <- extract_coords(basin_84)
+basin_coords <- extract_coords(basin_buf_84)
 
 #get min/max of lat/lon for extraction from .nc file
-lon_min <- min(basin_coords[ ,1]) - 0.15
-lon_max <- max(basin_coords[ ,1]) + 0.15
-lat_min <- min(basin_coords[ ,2]) - 0.15
-lat_max <- max(basin_coords[ ,2]) + 0.15
+lon_min <- min(basin_coords[ ,1]) - 0.5
+lon_max <- max(basin_coords[ ,1]) + 0.5
+lat_min <- min(basin_coords[ ,2]) - 0.5
+lat_max <- max(basin_coords[ ,2]) + 0.5
 
 lon_min_index <- which(abs(lon - lon_min) == min(abs(lon - lon_min)), arr.ind = T)[1,1]
 lat_min_index <- which(abs(lat - lat_max) == min(abs(lat - lat_max)), arr.ind = T)[1,2]
@@ -116,11 +119,6 @@ print(paste0(Sys.time(), " Extract precipitation from ncdf-file."))
 precs_cube <- ncdf4::ncvar_get(nc_prec, start =c(lon_min_index, lat_min_index, date_min_index), 
                                count = c(lon_count, lat_count, date_count), varid = "pre")
 
-print(paste0(Sys.time(), " Extract evapotranspiration from ncdf-file."))
-
-petr_cube <- ncdf4::ncvar_get(nc_petr, start =c(lon_min_index, lat_min_index, date_min_index),
-                              count = c(lon_count, lat_count, date_count), varid = "pet")
-
 #get lat/lon values of extracted cube
 lon2D <- lon[lon_min_index : (lon_min_index+lon_count-1), lat_min_index : (lat_min_index+lat_count-1)]
 lat2D <- lat[lon_min_index : (lon_min_index+lon_count-1), lat_min_index : (lat_min_index+lat_count-1)]
@@ -130,7 +128,7 @@ grid_points_cube_84 <-  sp::SpatialPoints(data.frame(lon = c(lon2D), lat = c(lat
 grid_points_cube     <- sp::spTransform(grid_points_cube_84, CRS = crs(basin, asText = T))
 
 #get grid points inside watershed
-inside <- !is.na(sp::over(grid_points_cube, as(basin, "SpatialPolygons")))
+inside <- !is.na(sp::over(grid_points_cube, as(basin_buf, "SpatialPolygons")))
 grid_points <- grid_points_cube[which(inside == T)]
 grid_points_84 <- sp::spTransform(grid_points, CRS = crs(grid_points_cube_84, asText = T))
 
@@ -138,7 +136,7 @@ grid_points_84 <- sp::spTransform(grid_points, CRS = crs(grid_points_cube_84, as
 cube_index_col <- sapply(grid_points_84@coords[,1], get_cube_index_col)
 cube_index_row <- sapply(grid_points_84@coords[,1], get_cube_index_row)
 
-#get time series from grid points inside sub-basin
+#get time series from grid points inside basin (with buffer)
 #temperature
 for (i in 1:length(cube_index_col)) {
   
@@ -161,24 +159,12 @@ for (i in 1:length(cube_index_col)) {
     precs <- cbind(precs, precs_sing)
   }
 }
-#evapotranspiration
-for (i in 1:length(cube_index_col)) {
-  
-  petr_sing <- petr_cube[cube_index_col[i], cube_index_row[i], ]
-  
-  if(i == 1){
-    petrs <- petr_sing
-  }else{
-    petrs <- cbind(petrs, petr_sing)
-  }
-}
 
 #sub-basin average values for rangking of weather types
 temp_basin <- apply(temps, 1, med_na)
 prec_basin <- apply(precs, 1, mea_na) 
-petr_basin <- apply(petrs, 1, med_na) 
 
-#Average mean snow water equivalent
+#Elevation grid points: 5km squared buffer
 my_elev_buff <- function(point_index){
   
   elev_buff(point_in = grid_points[point_index], dem_in = dem)
@@ -206,7 +192,6 @@ meta_grid <- data.frame(stn = paste0("point",1:length(grid_points)),
                         data_qual = rep("quality-checked", length(grid_points)),
                         clim_reg = rep("Jura", length(grid_points)))
 
-
 #Radiation data for snow simulations
 #Measured daily solar radiation from station Napf
 #Mean annual cycle as simplified input for snow simulations
@@ -231,7 +216,7 @@ radi_mea_seri <- rep( c(radi_mea_smo, radi_mea_smo[365], rep(radi_mea_smo, 3)), 
 
 #downscale----
 
-#Downscale temperature/precipitation grid using simple lapse-rate based approach
+#Downscale temperature grid using simple lapse-rate based approach
 #lapse rate in basin on daily bases used
 
 #downscale points
@@ -325,25 +310,13 @@ my_lin_trend <- function(data_in){
 }
 
 temps_ord <- temps[, order(elevs)]
-precs_ord <- precs[, order(elevs)]
-petrs_ord <- petrs[, order(elevs)]
 
 lapse_temp <- foreach(i = 1:nrow(temps_ord), .combine = 'c') %dopar% {
   
   my_lin_trend(temps_ord[i, ]) #[°C/m]
   
 }
-lapse_prec <- foreach(i = 1:nrow(precs_ord), .combine = 'c') %dopar% {
-  
-  my_lin_trend(precs_ord[i, ]) #[°C/m]
-  
-}
-lapse_petr <- foreach(i = 1:nrow(petrs_ord), .combine = 'c') %dopar% {
-  
-  my_lin_trend(petrs_ord[i, ]) #[°C/m]
-  
-}
-lapse_prec[which(is.na(lapse_prec))] <- 0 #when no rain at all recoreded NA; put to zero
+lapse_prec <- rep(0, nrow(precs)) #no lapse rate approach for precipitation; rain stays the same
 
 #downscale meteo on 1 km grid
 f_temps_laps <- function(data_in){
@@ -358,7 +331,9 @@ f_temps_laps <- function(data_in){
   temps_down <- sapply(1:length(d_points_elevs_dif), f_laps_mod)
   
   return(temps_down)
+  
 }
+
 f_precs_laps <- function(data_in){
   
   f_laps_mod <- function(index_in){
@@ -368,24 +343,12 @@ f_precs_laps <- function(data_in){
     
   }
   
-  temps_down <- sapply(1:length(d_points_elevs_dif), f_laps_mod)
-  return(temps_down)
-}
-f_petrs_laps <- function(data_in){
+  precs_down <- sapply(1:length(d_points_elevs_dif), f_laps_mod)
+  return(precs_down)
   
-  f_laps_mod <- function(index_in){
-    
-    data_laps <- data_in + lapse_petr* d_points_elevs_dif[index_in]
-    return(data_laps)
-    
-  }
-  
-  temps_down <- sapply(1:length(d_points_elevs_dif), f_laps_mod)
-  return(temps_down)
 }
 
-
-grid_points_d <- foreach(i = 1:ncol(temps), .combine = 'rbind') %dopar% {
+grid_points_d <- foreach(i = 1:length(grid_points), .combine = 'rbind') %dopar% {
   
   d_points <- down_points(grid_points@coords[i, ])
   
@@ -421,26 +384,7 @@ precs_d <- foreach(i = 1:ncol(precs), .combine = 'cbind') %dopar% {
   
 }
 
-petrs_d <- foreach(i = 1:ncol(petrs), .combine = 'cbind') %dopar% {
-  
-  d_points <- down_points(grid_points@coords[i, ])
-  
-  d_points_elevs <- raster::extract(dem, d_points)
-  
-  d_points_elevs_dif <- d_points_elevs - elevs[i]
-  
-  f_petrs_laps(petrs[, i]) #[mm]
-  
-}
-
-elevs_d <- foreach(i = 1:length(grid_points), .combine = 'c') %dopar% {
-  
-  d_points <- down_points(grid_points@coords[i, ])
-  
-  raster::extract(dem, d_points)
-  
-}
-
+elevs_d <-  raster::extract(dem, grid_points_d)
 
 #snow_simu----
 
@@ -610,6 +554,22 @@ snows_d <- snows_d[-(1:index_next_1Jan), ]
 temps_d <- temps_d[-(1:index_next_1Jan), ]
 precs_d <- precs_d[-(1:index_next_1Jan), ]
 date_snow <- meteo_date[-(1:index_next_1Jan)]
+
+#Get grid points inside watershed (calculations with buffer around)
+sim_inside <- !is.na(sp::over(grid_points_d, as(basin, "SpatialPolygons")))
+grid_points_d_in <- grid_points_d[which(sim_inside == T)]
+grid_points_d_in_84 <- sp::spTransform(grid_points_d_in, CRS = crs(grid_points_cube_84, asText = T))
+
+points_outside <- unique(which(sim_inside == F))
+snows_d <- snows_d[, -points_outside]
+temps_d <- temps_d[, -points_outside]
+precs_d <- precs_d[, -points_outside]
+elevs_d <- elevs_d[-points_outside]
+
+
+plot(grid_points_d_in[1:30])
+raster::extract(dem, grid_points_d_in[1:30])
+elevs_d[1:10]
 
 #analysis----
 
@@ -1071,7 +1031,7 @@ tmea_band_mea_5km <- apply(tmea_band_5km, 2, mea_na)#annual average values
 
 #Plot: Snow variables
 
-plot_snow <- vslo_band #smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band
+plot_snow <- vdis_band #smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band
 col_zero <- T #color range center at zero
 
 x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
@@ -1212,38 +1172,59 @@ val2col <- function(val_in){
   
   # dat_ref <- snows_d_mea
   # dat_ref <- temps_d_mea
-  dat_ref <- precs_d_mea
+  # dat_ref <- precs_d_mea
+  dat_ref <- elevs_d
   
-  val_in <- log(val_in)
-  dat_ref_log <- log(dat_ref)
+  # val_in <- log(val_in)
+  dat_ref_log <- dat_ref
   
   # my_col <- colorRampPalette(c("white", viridis(9, direction = 1)[c(3,4)], "cadetblue3", "grey80",
   #                              "yellow2","gold", "orange2", "orangered2"))(200)
-  my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
+  my_col <- c(colorRampPalette(c(viridis::viridis(20, direction = -1)))(200))
+  # my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
+      
+  col_ind <- round((val_in-min_na(dat_ref_log)) / (max_na(dat_ref_log)-min_na(dat_ref_log)) * 200)  
+    
+  if(col_ind == 0){#for minimum and very small values
+    
+    col_ind <- 1
+    
+  }
   
-  col_ind <- round((val_in-min_na(dat_ref_log)) / (max_na(dat_ref_log)-min_na(dat_ref_log)) * 200)
   
   col_out <- my_col[col_ind]
   
+  if(length(col_out) < 1){
+    
+     col_out <- "red"
+    
+  }
+  
+  return(col_out)
 }
 
-# cols_spat <- foreach(i = 1:length(snows_d_mea), .combine = 'cbind') %dopar% {
-#   
-#   val2col(snows_d_mea[i])
-#   
-# }
-
-cols_spat <- foreach(i = 1:length(temps_d_mea), .combine = 'cbind') %dopar% {
+cols_spat <- foreach(i = 1:length(elevs_d), .combine = 'cbind') %dopar% {
   
   # val2col(temps_d_mea[i])
-  val2col(precs_d_mea[i])
+  # val2col(precs_d_mea[i])
+  # val2col(snows_d_mea[i])
+  val2col(elevs_d[i])
   
 }
 
-plot(dem_sub_swiss, col = colorRampPalette(c("white", "black"))(200))
-plot(basin, add =T)
+pdf(paste0(base_dir,"R/figs_exp/simu_spat.pdf"), width = 12, height = 6)
 
-points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, col = cols_spat, cex = 0.2)
+# plot(dem_sub_swiss, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
+plot(dem_sub, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
+
+plot(basin, add =T)
+# points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, cex = 0.20, col = "red3")
+
+dev.off()
+
+elevs_d[which(cols_spat == "red")]
 
 range(dem_ele)
 range(elevs_d)
@@ -1253,7 +1234,7 @@ hist(dem_ele, breaks = my_elev_bands)
 
 
 
-
+plot(grid_points_d_in[1:10505], pch = 19)
 
 
 

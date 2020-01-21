@@ -35,9 +35,6 @@ base_dir <- "U:/rhine_snow/"
 # file_dir <- "e:/mhm_data/04_Daten/lobith_6435060/input/"
 file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
 
-#GRDC discharge data
-grdc_dir <- "d:/nrc_user/rottler/GRDC_DAY/"
-
 #cluster----
 
 #Cluster for parallel computing
