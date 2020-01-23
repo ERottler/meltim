@@ -566,11 +566,6 @@ temps_d <- temps_d[, -points_outside]
 precs_d <- precs_d[, -points_outside]
 elevs_d <- elevs_d[-points_outside]
 
-
-plot(grid_points_d_in[1:30])
-raster::extract(dem, grid_points_d_in[1:30])
-elevs_d[1:10]
-
 #analysis----
 
 snow_max <- apply(snows_d, 2, max_na)
@@ -1170,13 +1165,13 @@ dem_sub_swiss <- mask(dem_cro, my_box)
 
 val2col <- function(val_in){
   
-  # dat_ref <- snows_d_mea
+  dat_ref <- snows_d_mea
   # dat_ref <- temps_d_mea
   # dat_ref <- precs_d_mea
-  dat_ref <- elevs_d
+  # dat_ref <- elevs_d
   
-  # val_in <- log(val_in)
-  dat_ref_log <- dat_ref
+  val_in <- log(val_in)
+  dat_ref_log <- log(dat_ref)
   
   # my_col <- colorRampPalette(c("white", viridis(9, direction = 1)[c(3,4)], "cadetblue3", "grey80",
   #                              "yellow2","gold", "orange2", "orangered2"))(200)
@@ -1185,18 +1180,29 @@ val2col <- function(val_in){
       
   col_ind <- round((val_in-min_na(dat_ref_log)) / (max_na(dat_ref_log)-min_na(dat_ref_log)) * 200)  
     
+  if(is.na(col_ind)){
+    
+    col_ind <- 1 #set to one to keep script running; later set to NA color
+    
+  }
+  
   if(col_ind == 0){#for minimum and very small values
     
     col_ind <- 1
     
   }
   
-  
   col_out <- my_col[col_ind]
   
   if(length(col_out) < 1){
     
      col_out <- "red"
+    
+  }
+  
+  if(is.na(col_ind)){
+    
+    col_out <- "red"
     
   }
   
@@ -1207,8 +1213,8 @@ cols_spat <- foreach(i = 1:length(elevs_d), .combine = 'cbind') %dopar% {
   
   # val2col(temps_d_mea[i])
   # val2col(precs_d_mea[i])
-  # val2col(snows_d_mea[i])
-  val2col(elevs_d[i])
+  val2col(snows_d_mea[i])
+  # val2col(elevs_d[i])
   
 }
 
@@ -1219,8 +1225,8 @@ plot(dem_sub, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))
 
 plot(basin, add =T)
 # points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
-points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
-points(grid_points_d@coords[, 1], grid_points_d@coords[, 2], pch = 19, cex = 0.20, col = "red3")
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+# points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, cex = 0.20, col = "red3")
 
 dev.off()
 

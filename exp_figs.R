@@ -599,7 +599,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   # cols_max <- colorRampPalette(c("grey98", "gold3",  "orangered4", "firebrick4", "firebrick4", "darkred"))(n_max)
   
   cols_min <- colorRampPalette(c("darkred", "firebrick4", "orangered4", "gold3", "grey98"))(n_min)
-  cols_max <- colorRampPalette(c("white", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
+  cols_max <- colorRampPalette(c("grey98", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
   my_col <- colorRampPalette(c(cols_min, cols_max))(200)
   # my_bre <- seq(min_na(qdif[, ]), max_na(qdif[, ]), length.out = 201)
   my_bre <- c(seq(-max_na(abs(qdif)), 0, length.out = n_min),
@@ -700,9 +700,9 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   
   # cols_min <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = 1)[c(1,1, 2:4)], "grey98"))(100)
   # cols_max <- grDevices::colorRampPalette(c("grey98", "gold3", "orangered4", "darkred"))(100)
-  cols_min <- colorRampPalette(c("darkred", "orangered4", "goldenrod3", "gold3", "white"))(100)
-  cols_max <- colorRampPalette(c("white", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
-  cols_hydro <- c(cols_min, rep("white", 16), cols_max)
+  cols_min <- colorRampPalette(c("darkred", "goldenrod3", "gold3", "white"))(50)
+  cols_max <- colorRampPalette(c("white", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(50)
+  cols_hydro <- colorRampPalette(c(cols_min, "white", cols_max))(200)
   # cols_hydro <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = 1)))(100)
   # plot(1:100, 1:100, pch = 19, col = cols_min)
   
@@ -898,14 +898,14 @@ my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
 my_bre <- seq(-max_na(abs(sslo_band)), max_na(abs(sslo_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(sslo_band, cols = my_col, breaks = my_bre,
-              header = "a) SWE depth mean", lab_unit = "[m/dec]")
+              header = "b) SWE depth mean", lab_unit = "[m/dec]")
 
 #SWE volume mean
 my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
 my_bre <- seq(alptempr::min_na(vmea_band), alptempr::max_na(vmea_band), length.out = length(my_col)+1)
 
 snow_sim_plot(vmea_band, cols = my_col, breaks = my_bre,
-              header = "a) SWE volume mean", lab_unit = "[hm³]")
+              header = "c) SWE volume mean", lab_unit = "[hm³]")
 
 #SWE volume trend
 cols_min <- colorRampPalette(c("darkred", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(100)
@@ -915,7 +915,7 @@ my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vslo_band)), max_na(abs(vslo_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vslo_band, cols = my_col, breaks = my_bre,
-              header = "a) SWE depth mean", lab_unit = "[hm³/dec]")
+              header = "d) SWE depth mean", lab_unit = "[hm³/dec]")
 
 #SWE volume diff mean
 cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "darkred"))(100)
@@ -924,302 +924,16 @@ my_col <- c(cols_min, cols_max)
 my_bre <- seq(alptempr::min_na(vdif_band), alptempr::max_na(vdif_band), length.out = length(my_col)+1)
 
 snow_sim_plot(vdif_band, cols = my_col, breaks = my_bre,
-              header = "a) Accum./Melt mean", lab_unit = "[hm³/dec]")
+              header = "e) Accum./Melt mean", lab_unit = "[hm³/dec]")
 
-
-
-n_max <- 100
-n_min <- 100
-
-cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "darkred"))(n_max)
+#SWE volume diff trend
+cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "firebrick4", "darkred", "darkred"))(n_max)
 cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(n_min)
-my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
+my_col <- c(cols_min, cols_max)
+my_bre <- seq(-max_na(abs(vdis_band)), max_na(abs(vdis_band)), length.out = length(my_col)+1)
 
-
-
-# #SWE mean
-# data_plot <- smea_band; col_zero <- F; lab_unit <- "[m]"
-# 
-# par(mar = c(2.2, 3.5, 2.5, 0.2))
-# par(family = "serif")
-# 
-# x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-# x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-# 
-# plot_test <- data_plot
-# 
-# my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
-# my_col <- alpha(my_col, alpha = 1.0)
-# 
-# my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-# 
-# image(x = 1:365,
-#       y = elev_bands[-length(elev_bands)],
-#       z = plot_test, col =my_col, breaks = my_bre,
-#       ylab = "", xlab = "", axes = F)
-# axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-#      col = "black", col.axis = "black", tck = -0.04)#plot ticks
-# axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-#      col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-# axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-# mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-# mtext("a) SWE depth mean", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-# mtext("[m]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-# box()
-# 
-# par(mar = c(2.2, 0.2, 2.5, 3.0))
-# 
-# alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-# axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-# # mtext(lab_unit, side = 3, line = 0.3, cex = 1)
-# box()
-
-
-# #SWE slo
-# data_plot <- sslo_band; col_zero <- T; lab_unit <- "[m/dec]"
-# 
-# par(mar = c(2.2, 3.5, 2.5, 0.2))
-# 
-# x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-# x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-# 
-# plot_test <- data_plot
-# 
-# my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
-# 
-# my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-# 
-# if(col_zero){
-#   
-#   # n_max <- round(abs(alptempr::max_na(plot_test[, ])) / (alptempr::max_na(plot_test[, ]) + abs(alptempr::min_na(plot_test[, ]))), digits = 2) * 200
-#   # n_min <- 200 - n_max
-#   n_max <- 100
-#   n_min <- 100
-#   
-#   # cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "white"))(n_min)
-#   # cols_min <- colorRampPalette(c("darkred","orangered4", "orangered4", "orange3", "gold3", "grey90"))(n_min)
-#   # cols_min <- colorRampPalette(c("darkred","orangered4", "orangered4", "orange3", "grey92"))(n_min)
-#   # cols_max <- colorRampPalette(c("grey80", "cadetblue3"))(n_max)
-#   # cols_max <- colorRampPalette(c("grey92", viridis::viridis(9, direction = 1)[4:1]))(n_max)
-#   # cols_max <- colorRampPalette(c("grey90", viridis::viridis(9, direction = 1)[4:1]))(n_max)
-#   cols_min <- colorRampPalette(c("darkred", "firebrick4", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(n_min)
-#   # cols_max <- colorRampPalette(c("grey80", "cadetblue3"))(n_max)
-#   cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(n_max)
-#   
-#   my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
-#   
-#   my_bre <- seq(-max_na(abs(plot_test)), max_na(abs(plot_test)), length.out = length(my_col)+1)
-#   
-# }
-# 
-# image(x = 1:365,
-#       y = elev_bands[-length(elev_bands)],
-#       z = plot_test, col =my_col, breaks = my_bre,
-#       ylab = "", xlab = "", axes = F)
-# axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-#      col = "black", col.axis = "black", tck = -0.04)#plot ticks
-# axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-#      col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-# axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-# mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-# mtext("b) SWE depth trend", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-# mtext("[m/dec]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-# box()
-# 
-# par(mar = c(2.2, 0.2, 2.5, 3.0))
-# 
-# alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-# axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-# # mtext(lab_unit, side = 3, line = 0.3, cex = 1)
-# box()
-
-
-# #SWE volume mean
-# data_plot <- vmea_band/1000000; col_zero <- F; lab_unit <- "[m³]"
-# 
-# par(mar = c(2.2, 3.5, 2.5, 0.2))
-# 
-# x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-# x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-# 
-# plot_test <- data_plot
-# 
-# my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
-# my_col <- alpha(my_col, alpha = 1.0)
-# 
-# my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-# 
-# image(x = 1:365,
-#       y = elev_bands[-length(elev_bands)],
-#       z = plot_test, col =my_col, breaks = my_bre,
-#       ylab = "", xlab = "", axes = F)
-# axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-#      col = "black", col.axis = "black", tck = -0.04)#plot ticks
-# axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-#      col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-# axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-# mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-# mtext("c) SWE volume", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-# mtext("[hm³]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-# box()
-# 
-# par(mar = c(2.2, 0.2, 2.5, 3.0))
-# 
-# alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-# axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-# box()
-
-
-# #SWE volume slo
-# data_plot <- vslo_band/1000000; col_zero <- T; lab_unit <- "[hm³/dec]"
-# 
-# par(mar = c(2.2, 3.5, 2.5, 0.2))
-# 
-# x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-# x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-# 
-# plot_test <- data_plot
-# 
-# my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
-# 
-# my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-# 
-# if(col_zero){
-#   
-#   # n_max <- round(abs(alptempr::max_na(plot_test[, ])) / (alptempr::max_na(plot_test[, ]) + abs(alptempr::min_na(plot_test[, ]))), digits = 2) * 200
-#   # n_min <- 200 - n_max
-#   n_max <- 100
-#   n_min <- 100
-#   cols_min <- colorRampPalette(c("darkred", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(n_min)
-#   # cols_max <- colorRampPalette(c("grey80", "cadetblue3"))(n_max)
-#   cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(n_max)
-#   
-#   my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
-#   
-#   my_bre <- seq(-max_na(abs(plot_test)), max_na(abs(plot_test)), length.out = length(my_col)+1)
-#   
-# }
-# 
-# image(x = 1:365,
-#       y = elev_bands[-length(elev_bands)],
-#       z = plot_test, col =my_col, breaks = my_bre,
-#       ylab = "", xlab = "", axes = F)
-# axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-#      col = "black", col.axis = "black", tck = -0.04)#plot ticks
-# axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-#      col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-# axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-# mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-# mtext("d) SWE volume trend", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-# mtext("[hm³/dec]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-# box()
-# 
-# par(mar = c(2.2, 0.2, 2.5, 3.0))
-# 
-# alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-# axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-# box()
-
-
-#Snow diff mean
-data_plot <- vdif_band/1000000; col_zero <- T; lab_unit <- "[hm³]"
-
-par(mar = c(2.2, 3.5, 2.5, 0.2))
-
-x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-
-plot_test <- data_plot
-
-my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
-
-my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-
-if(col_zero){
-  
-  # n_max <- round(abs(alptempr::max_na(plot_test[, ])) / (alptempr::max_na(plot_test[, ]) + abs(alptempr::min_na(plot_test[, ]))), digits = 2) * 200
-  # n_min <- 200 - n_max
-  n_max <- 100
-  n_min <- 100
-
-  cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "darkred"))(n_max)
-  cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(n_min)
-  my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
-  
-  my_bre <- seq(-max_na(abs(plot_test)), max_na(abs(plot_test)), length.out = length(my_col)+1)
-  
-}
-
-image(x = 1:365,
-      y = elev_bands[-length(elev_bands)],
-      z = plot_test, col =my_col, breaks = my_bre,
-      ylab = "", xlab = "", axes = F)
-axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-     col = "black", col.axis = "black", tck = -0.04)#plot ticks
-axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-     col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-mtext("e) Accum./Melt mean", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-mtext("[hm³]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-box()
-
-par(mar = c(2.2, 0.2, 2.5, 3.0))
-
-alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-box()
-
-
-#Snow diff slo
-data_plot <- vdis_band/1000000; col_zero <- T; lab_unit <- "[hm³/dec]"
-
-par(mar = c(2.2, 3.5, 2.5, 0.2))
-
-x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
-x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-
-plot_test <- data_plot
-
-my_col <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
-
-my_bre <- seq(alptempr::min_na(plot_test), alptempr::max_na(plot_test), length.out = length(my_col)+1)
-
-if(col_zero){
-  
-  # n_max <- round(abs(alptempr::max_na(plot_test[, ])) / (alptempr::max_na(plot_test[, ]) + abs(alptempr::min_na(plot_test[, ]))), digits = 2) * 200
-  # n_min <- 200 - n_max
-  n_max <- 100
-  n_min <- 100
-
-  cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "firebrick4", "darkred", "darkred"))(n_max)
-  cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(n_min)
-  my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
-  
-  my_bre <- seq(-max_na(abs(plot_test)), max_na(abs(plot_test)), length.out = length(my_col)+1)
-  
-}
-
-image(x = 1:365,
-      y = elev_bands[-length(elev_bands)],
-      z = plot_test, col =my_col, breaks = my_bre,
-      ylab = "", xlab = "", axes = F)
-axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-     col = "black", col.axis = "black", tck = -0.04)#plot ticks
-axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-     col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
-mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
-mtext("f) Accum./Melt trend", side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-mtext("[hm³/dec]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
-box()
-
-par(mar = c(2.2, 0.2, 2.5, 3.0))
-
-alptempr::image_scale(as.matrix(plot_test), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-box()
-
+snow_sim_plot(vdis_band, cols = my_col, breaks = my_bre,
+              header = "f) Accum./Melt mean", lab_unit = "[hm³/dec]")
 
 dev.off()
 
