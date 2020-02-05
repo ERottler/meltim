@@ -14,8 +14,8 @@ data_dir <- "D:/nrc_user/rottler/"
 grdc_dir <- "D:/nrc_user/rottler/GRDC_DAY/"
 
 #Load results snow simulations
-load(paste0(base_dir, "R/draft_snow_17_12.RData"))
-load(paste0(base_dir, "R/draft_meltim.RData"))
+# load(paste0(base_dir, "R/draft_snow_17_12.RData"))
+# load(paste0(base_dir, "R/draft_meltim.RData"))
 
 #map_over----
 
@@ -622,7 +622,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   axis(2, mgp=c(3, 0.25, 0), tck = -0.025, cex.axis = 1.5)
   mtext("Prob. level", side = 2, line = 1.7, cex = 1.25)
   mtext(main_in, side = 3, line = 0.25, cex = 1.5, adj = 0.0)
-  mtext("[m³/s]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
+  mtext("[m?/s]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
   
   box()
   
@@ -732,7 +732,7 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   axis(2, mgp=c(3, 0.15, 0), tck = -0.025, cex.axis = 1.5)
   mtext("Year", side = 2, line = 1.7, cex = 1.25)
   mtext(main_in, side = 3, line = 0.25, cex = 1.5, adj = 0.0)
-  mtext("[m³/s]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
+  mtext("[m?/s]", side = 3, line = 0.2, cex = 1.2, adj = 1.0)
   
   box()
   
@@ -905,7 +905,7 @@ my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))
 my_bre <- seq(alptempr::min_na(vmea_band), alptempr::max_na(vmea_band), length.out = length(my_col)+1)
 
 snow_sim_plot(vmea_band, cols = my_col, breaks = my_bre,
-              header = "c) SWE volume mean", lab_unit = "[hm³]")
+              header = "c) SWE volume mean", lab_unit = "[hm?]")
 
 #SWE volume trend
 cols_min <- colorRampPalette(c("darkred", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(100)
@@ -915,7 +915,7 @@ my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vslo_band)), max_na(abs(vslo_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vslo_band, cols = my_col, breaks = my_bre,
-              header = "d) SWE depth mean", lab_unit = "[hm³/dec]")
+              header = "d) SWE depth mean", lab_unit = "[hm?/dec]")
 
 #SWE volume diff mean
 cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "darkred"))(100)
@@ -924,7 +924,7 @@ my_col <- c(cols_min, cols_max)
 my_bre <- seq(alptempr::min_na(vdif_band), alptempr::max_na(vdif_band), length.out = length(my_col)+1)
 
 snow_sim_plot(vdif_band, cols = my_col, breaks = my_bre,
-              header = "e) Accum./Melt mean", lab_unit = "[hm³/dec]")
+              header = "e) Accum./Melt mean", lab_unit = "[hm?/dec]")
 
 #SWE volume diff trend
 cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "firebrick4", "darkred", "darkred"))(n_max)
@@ -933,7 +933,7 @@ my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vdis_band)), max_na(abs(vdis_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vdis_band, cols = my_col, breaks = my_bre,
-              header = "f) Accum./Melt mean", lab_unit = "[hm³/dec]")
+              header = "f) Accum./Melt mean", lab_unit = "[hm?/dec]")
 
 dev.off()
 

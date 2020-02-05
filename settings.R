@@ -23,7 +23,7 @@ pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2,
                sp, viridis, rgdal, leaflet, ggmap, zoo, zyp, alptempr, lmomco, 
                raster, foreach, rfs, dismo, XML, parallel, doParallel, Lmoments,
                shape, devtools, pbapply, profvis, RColorBrewer, viridis, Rcpp, rEchseSnow,
-               Rlibeemd, xts, emdbook, rfs, meltimr, readr, tmap, sf)
+               Rlibeemd, xts, emdbook, rfs, meltimr, readr, tmap, sf, hydroGOF)
 # library(phaselag)
 
 #directories----
@@ -34,6 +34,16 @@ base_dir <- "U:/rhine_snow/"
 #gridded climate data
 # file_dir <- "e:/mhm_data/04_Daten/lobith_6435060/input/"
 file_dir <- "d:/nrc_user/rottler/toErwin1/6435060/"
+
+#snow cover data from EURAC
+scf_eurac_dir <- "D:/nrc_user/rottler/SCF_data/snow_eurac/zenodo_02_cloudremoval.tar/zenodo_02_cloudremoval/05_temporal_complete_max10d/" 
+
+#snow cover data from DLR
+scf_dlr_dir <- "D:/nrc_user/rottler/SCF_data/snow_dlr/SnowPack_DLR.tar/SnowPack_DLR/" 
+
+#catchments
+ezg_dir <- "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU/"
+
 
 #cluster----
 

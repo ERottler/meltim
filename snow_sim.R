@@ -568,6 +568,31 @@ elevs_d <- elevs_d[-points_outside]
 
 #analysis----
 
+#Snow cover fraction
+
+scf_simu_val <- NULL
+
+for(i in 1:nrow(snows_d)){
+  
+  print(i)
+  
+  scf_dummy <- snows_d[i, ]
+  
+  scf_dummy[which(scf_dummy >= 0.02)] <- 1
+  scf_dummy[which(scf_dummy <  0.02)] <- 0
+  
+  scf_row <- sum(scf_dummy, na.rm = T)/length(scf_dummy)
+  
+  scf_simu_val <- c(scf_simu_val, scf_row)
+  
+}
+
+
+scf_simu <- data.frame(date = date_snow,
+                       scf =  scf_simu_val)
+
+#Annual cycles
+
 snow_max <- apply(snows_d, 2, max_na)
 #length(which(snow_max > 3))
 
