@@ -12,11 +12,6 @@ sta_date <- as.POSIXct(strptime("2002-08-01", "%Y-%m-%d", tz = "UTC"))
 end_date <- as.POSIXct(strptime("2012-07-31", "%Y-%m-%d", tz = "UTC"))
 date_vali <- as.Date(seq(sta_date, end_date, by = "day"))
 
-#select basin
-basins <-  rgdal::readOGR(dsn = paste0(ezg_dir,"ezg_kombiniert.shp"))
-basin_base <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(scf_file, asText = T))
-basin_base_buf <- buffer(basin_base, width = 8000)
-
 #functs----
 
 scf_extr <- function(file_path, basin_in, aggr_fac = 2, snow_val = 50, provider = "DLR"){
@@ -99,6 +94,11 @@ scf_dlr <- data.frame(date = date[order(date)],
 file_names <- dir(path = scf_eurac_dir, recursive = T)
 scf_file <- raster(paste0(scf_eurac_dir , file_names[1]))
 
+#select basin
+basins <-  rgdal::readOGR(dsn = paste0(ezg_dir,"ezg_kombiniert.shp"))
+basin_base <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(scf_file, asText = T))
+basin_base_buf <- buffer(basin_base, width = 8000)
+
 #get dates from file names
 f_scf_date <- function(file_path, provider = "EURAC"){
   
@@ -138,7 +138,7 @@ file_names_sel <- which(scf_date %in% date_vali)
 #SCF times series for selected basin
 scf_out <- foreach(i = 1:length(file_names_sel), .combine = 'cbind') %dopar% {
   
-  scf_ext_eurac(paste0(scf_eurac_dir, file_names[i]))
+  scf_ext_eurac(paste0(scf_eurac_dir, file_names[file_names_sel[i]]))
   
 }
 
@@ -159,9 +159,10 @@ sc_doy_extr <- function(file_path, snow_val = 1, provider = "EURAC"){
   scf_cro <- raster::crop(scf, extent(basin_base_buf))
   scf_sub <- mask(scf_cro, basin_base_buf)
   
-  #get values and set to 0 if not snow
+  #get values and set to 0 if not snow, to 1 if snow
   scf_val_NA <- values(scf_sub)
-  scf_val_NA[which(scf_val_NA != 1)] <- 0
+  scf_val_NA[which(scf_val_NA != snow_val)] <- 0
+  scf_val_NA[which(scf_val_NA == snow_val)] <- 1
   
   #Extract date from file name
   if(provider == "DLR"){
@@ -189,7 +190,7 @@ for(i in 1:length(file_names_sel)){
   
   print(i)
   
-  sc_doy_sing <- sc_doy_extr(paste0(scf_eurac_dir, file_names[i]))
+  sc_doy_sing <- sc_doy_extr(paste0(scf_eurac_dir, file_names[file_names_sel[i]]))
   
   if(i == 1){
     sc_doy_valus <- sc_doy_sing
@@ -199,18 +200,44 @@ for(i in 1:length(file_names_sel)){
   
 }
 
-sc_doy_out <- foreach(i = 1:length(file_names_sel), .combine = 'rbind') %dopar% {
-  
-  sc_doy_extr(paste0(scf_eurac_dir, file_names[i]))
-  
-}
-
-sc_doy_valus <- apply(sc_doy_out, 2, sum_na)
+# sc_doy_out <- foreach(i = 1:length(file_names_sel), .combine = 'rbind') %dopar% {
+#   
+#   sc_doy_extr(paste0(scf_eurac_dir, file_names[i]))
+#   
+# }
+# 
+# sc_doy_valus <- apply(sc_doy_out, 2, sum_na)
 
 #fill dummy raster with calculated data values
 scf_file_cro <- raster::crop(scf_file, extent(basin_base_buf))
 scf_file_sub <- mask(scf_file_cro, basin_base_buf)
 scf_file_sub@data@values <- sc_doy_valus
+
+#get lakes from MODIS
+
+for(i in 1:length(file_names_sel)){
+  
+  print(paste0(i, " of ", length(file_names_sel)))
+  
+  lkd_sing <- sc_doy_extr(paste0(scf_eurac_dir, file_names[file_names_sel[i]]),
+                             snow_val = 5)
+  
+  if(i == 1){
+    lkd_valus <- lkd_sing
+  }else{
+    lkd_valus <- lkd_valus + lkd_sing 
+  }
+  
+}
+
+#fill dummy raster with calculated data values
+lake_file_cro <- raster::crop(scf_file, extent(basin_base_buf))
+lake_file_sub <- mask(lake_file_cro, basin_base_buf)
+lake_file_sub@data@values <- lkd_valus
+
+lake_file_sub_aggr <- aggregate(lake_file_sub, fact = 4, fun = modal, na.rm = TRUE)
+
+plot(lake_file_sub_aggr)
 
 #visu_time----
 
@@ -250,7 +277,7 @@ snow_simu_sel <- which(date_snow %in% date_vali)
 snows_d_vali <- snows_d[snow_simu_sel, ]
 
 #calculate sum days with snow for validation period
-f_snow2sc <- function(snow_in, snow_thresh = 0.02){
+f_snow2sc <- function(snow_in, snow_thresh = 0.03){
   
   snow_in[which(snow_in >= snow_thresh)] <- 1
   snow_in[which(snow_in <  snow_thresh)] <- 0
@@ -313,12 +340,12 @@ cols_spat <- foreach(i = 1:length(sc_doy_simu), .combine = 'cbind') %dopar% {
   
 }
 
-plot(dem_sub, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
-plot(basin_base, add =T)
+plot(basin_base)
 points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+plot(basin_base, add =T)
 
 #Resample EURAC data fit simulations
-scf_file_sub_aggr <- aggregate(scf_file_sub, fact = 4, fun = modal, na.rm = TRUE)
+scf_file_sub_aggr <- aggregate(scf_file_sub, fact = 4, fun = median, na.rm = TRUE)
 sc_doy_eurac <- raster::extract(scf_file_sub_aggr, grid_points_d_in)
 
 cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
@@ -328,17 +355,52 @@ cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
   
 }
 
-plot(dem_sub, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
-plot(basin_base, add =T)
+plot(basin_base)
 points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+plot(basin_base, add =T)
+
+#Remove lakes
+lkd_eurac <- raster::extract(lake_file_sub_aggr, grid_points_d_in)
+summary(lkd_eurac)
+lakes_ind <- which(lkd_eurac > (length(date_vali)*0.9))
+
+sc_doy_eurac[lakes_ind] <- NA
+
+cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = sc_doy_eurac[i],
+          dat_ref = sc_doy_eurac)
+  
+}
+
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+plot(basin_base, add = T)
+
+#Remove glaciers
+gla_eurac <- raster::extract(scf_file_sub_aggr, grid_points_d_in)
+summary(gla_eurac)
+glacs_ind <- which(gla_eurac > (length(date_vali)*0.9))
+
+sc_doy_eurac[glacs_ind] <- NA
+
+cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = sc_doy_eurac[i],
+          dat_ref = sc_doy_eurac)
+  
+}
+
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+plot(basin_base, add = T)
 
 #Calculate difference Obs. and Sim.
-scd_dif <- sc_doy_simu - sc_doy_eurac
+scd_dif <- (sc_doy_simu - sc_doy_eurac) / 10
 
-scd_dif[which(abs(scd_dif) > 300)] <- NA
+# scd_dif[which(abs(scd_dif) > 200)] <- NA
 
-
-val2col <- function(val_in, dat_ref, do_log = F, do_bicol = T, col_na = "green"){
+val2col <- function(val_in, dat_ref, do_log = F, do_bicol = T, col_na = "white"){
   
   if(do_log){
     
@@ -359,9 +421,9 @@ val2col <- function(val_in, dat_ref, do_log = F, do_bicol = T, col_na = "green")
     col_ind <- round((abs(val_in) / max_na(abs(dat_ref))) * 100)
     
     if(val_in < 0){
-      my_col  <- colorRampPalette(c("grey98", "gold3", "orangered4", "firebrick4", "darkred"))(100)
+      my_col  <- colorRampPalette(c("grey98", "lemonchiffon2", "gold3", "orangered4", "darkred"))(100)
     }else{
-      my_col  <- colorRampPalette(c("grey98", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
+      my_col  <- colorRampPalette(c("grey98", "azure4", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
     }
     
   }else{
@@ -415,18 +477,33 @@ layout(matrix(c(rep(1, 7), 2),
 # layout.show(n = 2)
 
 par(mar = c(2.0, 0.5, 0.5, 0.5))
-# plot(dem_sub, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
 plot(basin_base)
 points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
 plot(basin_base, add = T)
 
 par(mar = c(2.0, 0.2, 2.5, 3.5))
-cols_min <- colorRampPalette(c("darkred", "firebrick4", "orangered4", "gold3", "grey98"))(100)
-cols_max <- colorRampPalette(c("grey98", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
+cols_min <- colorRampPalette(c("darkred", "orangered4", "gold3", "lemonchiffon2", "grey80"))(100)
+cols_max <- colorRampPalette(c("grey80", "azure4", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
 my_col <- colorRampPalette(c(cols_min, cols_max))(200)
 my_bre <- seq(-max_na(abs(scd_dif)), max_na(abs(scd_dif)), length.out = length(my_col)+1)
 alptempr::image_scale(as.matrix(scd_dif), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
 axis(4, mgp=c(3, 0.45, 0), tck = -0.1, cex.axis = 1.5)
 box()
 
+
+
+
+
+par(mfrow = c(1,1))
+par(mar = c(2,2,2,2))
+range(scd_dif, na.rm = T)
+hist(scd_dif, breaks = seq(-160, 155, 1), col = "grey52", border = F)
+abline(v = c(-30, 20))
+
+quantile(scd_dif, probs = 0.9, na.rm = T)
+boxplot(scd_dif)
+
+length(which(abs(scd_dif) < 28)) / length(scd_dif)
+
+plot(elevs_d, scd_dif, pch = 19, cex = 0.5, col = alpha("grey50", alpha = 0.5))
 

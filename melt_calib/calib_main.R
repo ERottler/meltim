@@ -33,10 +33,10 @@ stat_calib <- read.table(paste0(base_dir, "R/meltim/melt_calib/station_calib.txt
 snow_params <- read.table(paste0(base_dir, "R/meltim/snow_param.txt"), header = T, sep = ";")
 
 sta_yea_sno <- 1970 #start year snow simulation
-end_yea_sno <- 2005 #end year snow simulation
+end_yea_sno <- 2015 #end year snow simulation
 
-sta_yea_cal <- 1977 #start year calibration period (compare simulated end measured values)
-end_yea_cal <- 2002 #end year calibration period
+sta_yea_cal <- 1980 #start year calibration period (compare simulated end measured values)
+end_yea_cal <- 2010 #end year calibration period
 
 #Cluster for parallel computing
 
@@ -195,7 +195,7 @@ for(i in 1:nrow(stat_calib)){
 
 #data_prep_stat----
 
-#Read snow station data
+#Read station data
 rain_data_all_1 <- read.table(paste0(base_dir,"data/idaweb/order74624/order_74624_data.txt"), sep = ";", 
                               skip = 2, stringsAsFactors = F, na.strings = "-")
 rain_data_all_2 <- read.table(paste0(base_dir,"data/idaweb/order74631/order_74631_data.txt"), sep = ";", 
@@ -308,6 +308,119 @@ radi_mea_seri <- rep( c(radi_mea_smo, radi_mea_smo[365], rep(radi_mea_smo, 3)), 
 meteo_date <- as.Date(full_date) #when preparing grid input, date called meteo_date
 
 
+#data_prep_swe----
+
+f_read_swe <- function(slf_swe_file, sta_year = sta_yea_sno, end_year = end_yea_sno){
+  
+  swe_data <- read.table(slf_swe_file, header = T, sep = ",")
+  swe_data$DATUM <- as.Date(swe_data$DATUM, "%d.%m.%Y")
+  
+  start_date <- as.POSIXct(strptime(paste0(1900, "-01-01"), "%Y-%m-%d", tz = "UTC"))
+  end_date <- as.POSIXct(strptime(paste0(2020, "-12-31"), "%Y-%m-%d", tz = "UTC"))
+  full_date <- seq(start_date, end_date, by = "day")
+  
+  swe_data_full <- data.frame(dates = full_date, 
+                              values = with(swe_data, SWE..mm.[match(as.Date(full_date), as.Date(DATUM))]))
+  
+  swe_data_full <- swe_data_full[format(swe_data_full$dates, '%Y') >= sta_year, ]
+  swe_data_full <- swe_data_full[format(swe_data_full$dates, '%Y') <= end_year, ]
+  
+  return(swe_data_full)
+  
+}
+
+swe_and <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe_data/sp_2AN.txt"))
+swe_dav <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe_data/sp_5DF.txt"))      
+swe_wfj <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe_data/sp_5WJ.txt")) 
+swe_sta <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe_data/sp_7ST.txt"))    
+
+swe_all <- cbind(swe_and$values, swe_dav$values, swe_wfj$values, swe_sta$values)
+
+#Read temperature and precipitation data
+rain_data_all_1 <- read.table(paste0(base_dir,"data/idaweb/order74624/order_74624_data.txt"), sep = ";", 
+                              skip = 2, stringsAsFactors = F, na.strings = "-")
+rain_data_all_2 <- read.table(paste0(base_dir,"data/idaweb/order74631/order_74631_data.txt"), sep = ";", 
+                              skip = 2, stringsAsFactors = F, na.strings = "-")
+rain_data_all <- rbind(rain_data_all_1, rain_data_all_2)
+
+temp_data_all_1 <- read.table(paste0(base_dir,"data/idaweb/order74625/order_74625_data.txt"), sep = ";", 
+                              skip = 2, stringsAsFactors = F, na.strings = "-")
+temp_data_all_2 <- read.table(paste0(base_dir,"data/idaweb/order74632/order_74632_data.txt"), sep = ";", 
+                              skip = 2, stringsAsFactors = F, na.strings = "-")
+temp_data_all <- rbind(temp_data_all_1, temp_data_all_2)
+
+#Get measurements data
+stat_ids_sel <- c("ANT", "DAV", "WFJ", "SMM")
+for(i in 1:length(stat_ids_sel)){
+  
+  print(i)
+  
+  station_id <- stat_ids_sel[i]
+  sel_ind_rai <- which(rain_data_all$V1 == as.character(station_id))
+  sel_ind_tem <- which(temp_data_all$V1 == as.character(station_id))
+  
+  rain_valu <- as.numeric(rain_data_all$V3[sel_ind_rai])
+  temp_valu <- as.numeric(temp_data_all$V3[sel_ind_tem])
+  
+  rain_date <- as.Date(strptime(rain_data_all$V2[sel_ind_rai], "%Y%m%d", tz = "UTC"))
+  temp_date <- as.Date(strptime(temp_data_all$V2[sel_ind_tem], "%Y%m%d", tz = "UTC"))
+  
+  data_full_rai <- data.frame(date = rain_date, value = rain_valu)
+  data_full_tem <- data.frame(date = temp_date, value = temp_valu)
+  
+  input_data_rai <- data_full_rai[as.numeric(format(data_full_rai$date, "%Y")) >= sta_yea_sno, ]
+  input_data_tem <- data_full_tem[as.numeric(format(data_full_tem$date, "%Y")) >= sta_yea_sno, ]
+  
+  input_data_rai <- input_data_rai[as.numeric(format(input_data_rai$date,  "%Y")) <= end_yea_sno, ]
+  input_data_tem <- input_data_tem[as.numeric(format(input_data_tem$date,  "%Y")) <= end_yea_sno, ]
+  
+  start_date <- as.POSIXct(strptime(paste0(sta_yea_sno, "-01-01"), "%Y-%m-%d", tz = "UTC"))
+  end_date <- as.POSIXct(strptime(paste0(end_yea_sno, "-12-31"), "%Y-%m-%d", tz = "UTC"))
+  full_date <- seq(start_date, end_date, by = "day")
+  
+  input_data_rai <- data.frame(dates = full_date, values = with(input_data_rai, 
+                                                                value[match(as.Date(full_date), as.Date(date))]))
+  input_data_tem <- data.frame(dates = full_date, values = with(input_data_tem, 
+                                                                value[match(as.Date(full_date), as.Date(date))]))
+  
+  if(i == 1){
+    
+    precs_all <- input_data_rai$value
+    temps_all <- input_data_tem$value
+    
+  }else{
+    
+    precs_all <- cbind(precs_all, input_data_rai$values)
+    temps_all <- cbind(temps_all, input_data_tem$values)
+    
+  }
+  
+}
+
+#Radiation data for snow simulations
+#Measured daily solar radiation from station Napf
+#Mean annual cycle as simplified input for snow simulations
+
+radi_sno <- read.table(paste0(base_dir, "data/idaweb/order62894/order_62894_data.txt"), sep = ";", skip = 2, header = T)
+radi_sno$date <- as.Date(strptime(radi_sno$time, "%Y%m%d", tz="UTC"))
+radi_sno$radi <- radi_sno$gre000d0
+
+radi_snow_day <- ord_day(data_in = radi_sno$gre000d0,
+                         date= radi_sno$date,
+                         start_y = 1981,
+                         end_y = 2017)
+
+radi_mea <- apply(radi_snow_day, 2, mea_na)
+
+radi_mea_smo <- smoothFFT(radi_mea, sd = 19)
+# plot(radi_mea_smo, type = "l")
+
+#Syntetic radiation time series based on mean values
+radi_mea_seri <- rep( c(radi_mea_smo, radi_mea_smo[365], rep(radi_mea_smo, 3)), 50)[1:nrow(temps_all)]
+
+meteo_date <- as.Date(full_date) #when preparing grid input, date called meteo_date
+
+
 #calib_sing----
 
 for(i in 1:ncol(temps_all)){
@@ -390,7 +503,8 @@ for(i in 1:ncol(temps_all)){
 
 temps <- temps_all
 precs <- precs_all
-snows_stat <- snows_stat_all
+# snows_stat <- snows_stat_all
+snows_stat <- swe_all
 
 save(temps, precs, radi_mea_seri, snows_stat, snow_params, meteo_date, sta_yea_cal, end_yea_cal,
      file = paste0(base_dir, "R/meltim/melt_calib/calib_thread/calib_snow_data.Rdata"), version = 2)
@@ -444,7 +558,7 @@ starting.values=rbind(#initial estimates
   
 )
 
-max_number_function_calls = 5000
+max_number_function_calls = 500
 
 #Save results indivudial stations
 results_individual <- NULL

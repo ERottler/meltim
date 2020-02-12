@@ -59,7 +59,7 @@ basins <-  rgdal::readOGR(dsn = "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU
 basin <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(dem, asText = T))
 basin_buf <- buffer(basin, width = 8000)
 
-#corp DEM sub-basin area
+#crop DEM sub-basin area
 dem_cro <- raster::crop(dem, extent(basin))
 dem_sub <- mask(dem_cro, basin)
 
@@ -310,12 +310,19 @@ my_lin_trend <- function(data_in){
 }
 
 temps_ord <- temps[, order(elevs)]
+precs_ord <- precs[, order(elevs)]
 
 lapse_temp <- foreach(i = 1:nrow(temps_ord), .combine = 'c') %dopar% {
   
   my_lin_trend(temps_ord[i, ]) #[°C/m]
   
 }
+# lapse_prec <- foreach(i = 1:nrow(precs_ord), .combine = 'c') %dopar% {
+#   
+#   my_lin_trend(precs_ord[i, ]) #[mm/m]
+#   
+# }
+
 lapse_prec <- rep(0, nrow(precs)) #no lapse rate approach for precipitation; rain stays the same
 
 #downscale meteo on 1 km grid
@@ -385,6 +392,58 @@ precs_d <- foreach(i = 1:ncol(precs), .combine = 'cbind') %dopar% {
 }
 
 elevs_d <-  raster::extract(dem, grid_points_d)
+
+#Correct precipitation with elevation
+#above 1000m 5% more every 100 m
+
+f_prec_cor <- function(prec_in, elev_in){
+  
+  prec_cor_fact <- 0.02
+  if(elevs_d_sel - 1000 > 0){
+    
+    prec_cor <- prec_in + prec_in * ((elev_in - 1000) / 100 * prec_cor_fact)
+    
+  }else{
+    
+    prec_cor <- prec_in
+    
+  }
+  
+  return(prec_cor)
+
+  
+  }
+
+block_size <- 1000
+block_stas <- c(1, seq(block_size+1, ncol(precs_d), by = block_size))
+block_ends <- c(seq(block_size, ncol(precs_d), by = block_size), ncol(precs_d))
+
+for(b in 1:length(block_stas)){
+  
+  precs_calc <- precs_d[, block_stas[b]:block_ends[b]]
+  elevs_calc <- elevs_d[block_stas[b]:block_ends[b]]
+  
+  print(paste(Sys.time(),"Precipitation correction", "Block:", b, "out of", length(block_stas)))
+  
+  precs_block <- foreach(i = 1:ncol(precs_calc), .combine = 'cbind') %dopar% {
+    
+    elevs_d_sel <- elevs_d[i]
+    
+    prec_cor_sing <- f_prec_cor(prec_in = precs_calc[, i],
+                                elev_in = elevs_calc[i])
+    
+  }
+  
+  if(b == 1){
+    precs_d_cor <- precs_block
+  }else{
+    precs_d_cor <- cbind(precs_d_cor, precs_block)
+  }
+  
+}
+
+
+precs_d <- precs_d_cor
 
 #snow_simu----
 
