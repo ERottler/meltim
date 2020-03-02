@@ -51,7 +51,7 @@ ezg_dir <- "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU/"
 
 # stopCluster(my_clust)
 
-n_cores <- 40 #number of cores used for parallel computing
+n_cores <- 30 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 my_clust <- makeCluster(n_cores)
@@ -60,16 +60,26 @@ registerDoParallel(my_clust)
 
 #save_files----
 
-load(file = "U:/rhine_snow/R/draft_snow.RData")
-
-save(snows_d_band, my_elev_bands, date_snow, svolu_d_band, 
-     smea_band, vmea_band, sslo_band, vslo_band, vdif_band, vdis_band,
-     tmea_band, tmea_band_mea, tslo_band, tslo_band_mea,
-     pmea_band, pmea_band_mea, pslo_band, pslo_band_mea,
-     meta_grid_bands, sno_vol_basin, prec_basin,
+save(date_snow, grid_points_d_in, snows_d, temps_d, precs_d, elevs_d,
+     basin, basin_buf,
      
+     scf_eurac, 
+     
+
      file = "U:/rhine_snow/R/draft_snow_17_12.RData")
-     # file = "U:/rhine_snow/R/draft_snow_100.RData")
+
+
+# 
+# load(file = "U:/rhine_snow/R/draft_snow.RData")
+# 
+# save(snows_d_band, my_elev_bands, date_snow, svolu_d_band, 
+#      smea_band, vmea_band, sslo_band, vslo_band, vdif_band, vdis_band,
+#      tmea_band, tmea_band_mea, tslo_band, tslo_band_mea,
+#      pmea_band, pmea_band_mea, pslo_band, pslo_band_mea,
+#      meta_grid_bands, sno_vol_basin, prec_basin,
+#      
+#      file = "U:/rhine_snow/R/draft_snow_17_12.RData")
+#      # file = "U:/rhine_snow/R/draft_snow_100.RData")
 
 
 # smea_band_diep <- smea_band

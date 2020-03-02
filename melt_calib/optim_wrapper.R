@@ -28,7 +28,7 @@ optim_wrapper <- function(params = NULL){
     snow_params$agingRate_tAirNeg <- params[which(names(params) == "agingRate_tAirNeg")]
     snow_params$weightAirTemp     <- params[which(names(params) == "weightAirTemp")]
     # # snow_params$tempAmpli         <- params[which(names(params) == "tempAmpli")]
-  
+    
     if(is.vector(temps)){
       numb_stat <- 1
       meteo_length <- length(temps)
@@ -76,7 +76,7 @@ optim_wrapper <- function(params = NULL){
         pressAir = 1000,
         relHumid = 70,
         windSpeed = 1,
-        cloudCoverage = 0.5,
+        cloudCoverage = 0.50,
         #Parameters
         precipSeconds = snow_params$precipSeconds,
         a0 = snow_params$a0,
@@ -143,7 +143,7 @@ optim_wrapper <- function(params = NULL){
   
   source("melt_calib/obj_function.R")
 
-  #selecte calibration period
+  #select calibration period
   min_ind <- which(meteo_date == paste0(sta_yea_cal, "-01-01"))
   max_ind <- which(meteo_date == paste0(end_yea_cal, "-12-31"))
   

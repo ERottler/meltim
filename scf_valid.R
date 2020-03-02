@@ -12,82 +12,6 @@ sta_date <- as.POSIXct(strptime("2002-08-01", "%Y-%m-%d", tz = "UTC"))
 end_date <- as.POSIXct(strptime("2012-07-31", "%Y-%m-%d", tz = "UTC"))
 date_vali <- as.Date(seq(sta_date, end_date, by = "day"))
 
-#functs----
-
-scf_extr <- function(file_path, basin_in, aggr_fac = 2, snow_val = 50, provider = "DLR"){
-  
-  #Read file
-  scf <- raster(file_path)
-  
-  #corp file to basin area
-  scf_cro <- raster::crop(scf, extent(basin_base))
-  scf_sub <- mask(scf_cro, basin_base)
-  
-  scf_sub <- aggregate(scf_sub, fact = aggr_fac, fun = modal, na.rm = TRUE)
-  
-  #get values of cells cropped
-  scf_sub_val_NA <- scf_sub@data@values
-  scf_sub_val <- scf_sub_val_NA[!is.na(scf_sub_val_NA)]
-  
-  #Calculate snow cover fraction
-  scf_valu <- length(which(scf_sub_val == snow_val)) / length(scf_sub_val)  
-  
-  #Extract date from file name
-  if(provider == "DLR"){
-    
-    doy <- as.numeric(substr(file_path, nchar(file_path)-6, nchar(file_path)-4))
-    yea <- substr(file_path, nchar(file_path)-11, nchar(file_path)-8)
-    date <- as.character(as.Date(doy, origin = paste0(yea, "-01-01")))
-    
-  }
-  
-  if(provider == "EURAC"){
-    
-    day <- substr(file_path, nchar(file_path)-12, nchar(file_path)-11)
-    mon <- substr(file_path, nchar(file_path)-14, nchar(file_path)-13)
-    yea <- substr(file_path, nchar(file_path)-18, nchar(file_path)-15)
-    date <- paste0(yea, "-", mon, "-", day)
-    
-  }
-  
-  return(c(date, scf_valu))
-  
-}
-
-scf_ext_dlr <- function(file_path){scf_extr(file_path = file_path, 
-                                            basin_in = basin_base,
-                                            aggr_fac = 2,
-                                            snow_val = 50,
-                                            provider = "DLR")}
-
-scf_ext_eurac <- function(file_path){scf_extr(file_path = file_path, 
-                                            basin_in = basin_base,
-                                            aggr_fac = 4,
-                                            snow_val = 1,
-                                            provider = "EURAC")}
-
-#calc_dlr----
-
-file_names <- dir(path = scf_dlr_dir, recursive = T)
-# file_names <- file_names[-which(file_names == "README.txt")]
-file_names <- paste0(scf_dlr_dir, "/", file_names[which(nchar(file_names) == 28)])
-gsp_crs <- raster(file_names[1])
-
-basins <-  rgdal::readOGR(dsn = paste0(ezg_dir,"ezg_kombiniert.shp"))
-basin_base <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(gsp_crs, asText = T))
-
-scf_out <- foreach(i = 1:length(file_names), .combine = 'cbind') %dopar% {
-  
-   scf_ext_dlr(file_names[i])
-  
-}
-
-date <- as.Date(as.character(scf_out[1, ]), "%Y-%m-%d")
-scf <- as.numeric(scf_out[2, ])
-
-scf_dlr <- data.frame(date = date[order(date)],
-                      scf = scf[order(date)])
-
 #calc_eurac----
 
 #get file names
@@ -133,24 +57,11 @@ scf_dates <- foreach(i = 1:length(file_names), .combine = 'cbind') %dopar% {
 scf_date <- as.Date(as.character(scf_dates[1, ]), "%Y-%m-%d")
 
 #select files covering validation period
-file_names_sel <- which(scf_date %in% date_vali)
+file_names_sel <- file_names[which(scf_date %in% date_vali)]
 
-#SCF times series for selected basin
-scf_out <- foreach(i = 1:length(file_names_sel), .combine = 'cbind') %dopar% {
-  
-  scf_ext_eurac(paste0(scf_eurac_dir, file_names[file_names_sel[i]]))
-  
-}
+#sum up days with snow cover for selected basin (with buffer) and time frame
 
-date <- as.Date(as.character(scf_out[1, ]), "%Y-%m-%d")
-scf <- as.numeric(scf_out[2, ])
-
-scf_eurac <- data.frame(date = date[order(date)],
-                        scf = scf[order(date)])
-
-#Spatial map with DOY with snow cover for selected basin and time frame
-
-sc_doy_extr <- function(file_path, snow_val = 1, provider = "EURAC"){
+f_scd_extr <- function(file_path, snow_val, provider){
   
   #Read file
   scf <- raster(file_path)
@@ -186,58 +97,246 @@ sc_doy_extr <- function(file_path, snow_val = 1, provider = "EURAC"){
   
 }
 
-for(i in 1:length(file_names_sel)){
+block_size <- 1000
+block_stas <- c(1, seq(block_size+1, length(file_names_sel), by = block_size))
+block_ends <- c(seq(block_size, length(file_names_sel), by = block_size), length(file_names_sel))
+
+for(b in 1:length(block_stas)){
   
-  print(i)
+  file_names_calc <- file_names_sel[block_stas[b]:block_ends[b]]
   
-  sc_doy_sing <- sc_doy_extr(paste0(scf_eurac_dir, file_names[file_names_sel[i]]))
+  print(paste(Sys.time(),"Spatial analysis: Days with snow cover", "Block:", b, "out of", length(block_stas)))
   
-  if(i == 1){
-    sc_doy_valus <- sc_doy_sing
+  scd_out <- foreach(i = 1:length(file_names_calc), .combine = 'cbind') %dopar% {
+    
+    f_scd_extr(file_path = paste0(scf_eurac_dir, file_names_calc[i]),
+               snow_val = 1,
+               provider = "EURAC")
+    
+  }
+  
+  if(b == 1){
+    scd_eurac_buf_all <- scd_out
   }else{
-    sc_doy_valus <- sc_doy_valus + sc_doy_sing 
+    scd_eurac_buf_all <- cbind(scd_eurac_buf_all, scd_out)
+  }
+}
+
+scd_eurac_buf_sum <- apply(scd_eurac_buf_all, 1, sum_na)
+rm(scd_eurac_buf_all) #remove file after calculation as very big
+gc() #colltect some garbage
+
+#fill dummy raster with calculated snow cover fraction values
+scf_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
+scf_buf <- mask(scf_buf_crop, basin_base_buf)
+scf_buf@data@values <- scd_eurac_buf_sum
+plot(scf_buf)
+
+#get lake sufaces
+block_size <- 1000
+block_stas <- c(1, seq(block_size+1, length(file_names_sel), by = block_size))
+block_ends <- c(seq(block_size, length(file_names_sel), by = block_size), length(file_names_sel))
+
+for(b in 1:length(block_stas)){
+  
+  file_names_calc <- file_names_sel[block_stas[b]:block_ends[b]]
+  
+  print(paste(Sys.time(),"Spatial analysis: Lakes", "Block:", b, "out of", length(block_stas)))
+  
+  lak_out <- foreach(i = 1:length(file_names_calc), .combine = 'cbind') %dopar% {
+    
+    f_scd_extr(file_path = paste0(scf_eurac_dir, file_names_calc[i]),
+               snow_val = 5,
+               provider = "EURAC")
+    
+  }
+  
+  if(b == 1){
+    lak_eurac_buf_all <- lak_out
+  }else{
+    lak_eurac_buf_all <- cbind(lak_eurac_buf_all, lak_out)
   }
   
 }
 
-# sc_doy_out <- foreach(i = 1:length(file_names_sel), .combine = 'rbind') %dopar% {
-#   
-#   sc_doy_extr(paste0(scf_eurac_dir, file_names[i]))
-#   
-# }
-# 
-# sc_doy_valus <- apply(sc_doy_out, 2, sum_na)
+lak_eurac_buf_sum <- apply(lak_eurac_buf_all, 1, sum_na)
+rm(lak_eurac_buf_all) #remove file after calculation as very big
 
-#fill dummy raster with calculated data values
-scf_file_cro <- raster::crop(scf_file, extent(basin_base_buf))
-scf_file_sub <- mask(scf_file_cro, basin_base_buf)
-scf_file_sub@data@values <- sc_doy_valus
+#fill dummy raster with calculated lake surfaces
+lak_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
+lak_buf <- mask(lak_buf_crop, basin_base_buf)
+lak_buf@data@values <- 0
+laks_ind <- which(lak_eurac_buf_sum > (length(date_vali)*0.9))
+lak_buf@data@values[laks_ind] <- 100
+plot(lak_buf)
+plot(basin_base_buf, add = T)
 
-#get lakes from MODIS
+#calculate glacier surfaces
+gla_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
+gla_buf <- mask(gla_buf_crop, basin_base_buf)
+gla_buf@data@values <- 0
+glacs_ind <- which(scd_eurac_buf_sum > (length(date_vali)*0.9))
+gla_buf@data@values[glacs_ind] <- 100
+plot(gla_buf)
+plot(basin_base_buf, add = T)
 
-for(i in 1:length(file_names_sel)){
+#aggregate EURAC data to simulation resolution
+scf_buf_aggr <- aggregate(scf_buf, fact = 4, fun = median, na.rm = TRUE)
+gla_buf_aggr <- aggregate(gla_buf, fact = 4, fun = median, na.rm = TRUE)
+lak_buf_aggr <- aggregate(lak_buf, fact = 4, fun = median, na.rm = TRUE)
+plot(scf_buf_aggr)
+plot(gla_buf_aggr)
+plot(lak_buf_aggr)
+
+#Remove lake and glacier surfaces
+laks_rem_ind <- which(lak_buf_aggr@data@values == 100)
+glac_rem_ind <- which(gla_buf_aggr@data@values == 100)
+
+scf_buf_aggr@data@values[laks_rem_ind] <- NA
+scf_buf_aggr@data@values[glac_rem_ind] <- NA
+plot(scf_buf_aggr)
+
+#Get values grid points simulated
+scd_eurac <- raster::extract(scf_buf_aggr, grid_points_d_in)
+
+val2col <- function(val_in, dat_ref, do_log = F){
   
-  print(paste0(i, " of ", length(file_names_sel)))
+  if(do_log){
+    
+    val_in <- log(val_in)
+    dat_ref <- log(dat_ref)
+    
+  }
   
-  lkd_sing <- sc_doy_extr(paste0(scf_eurac_dir, file_names[file_names_sel[i]]),
-                             snow_val = 5)
+  my_col <- c(colorRampPalette(c(viridis::viridis(20, direction = -1)))(200))
   
-  if(i == 1){
-    lkd_valus <- lkd_sing
+  col_ind <- round((val_in-min_na(dat_ref)) / (max_na(dat_ref)-min_na(dat_ref)) * 200)  
+  
+  if(is.na(col_ind)){
+    set2NA <- T
+    col_ind <- 1 #set to one to keep script running; later set to NA color
   }else{
-    lkd_valus <- lkd_valus + lkd_sing 
+    set2NA = F
+  }
+  
+  if(col_ind == 0){#for minimum and very small values
+    
+    col_ind <- 1
+    
+  }
+  
+  col_out <- my_col[col_ind]
+  
+  if(length(col_out) < 1){
+    
+    col_out <- "red"
+    
+  }
+  
+  if(set2NA){
+    
+    col_out <- "red"
+    
+  }
+  
+  return(col_out)
+}
+
+cols_spat <- foreach(i = 1:length(scd_eurac), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = scd_eurac[i],
+          dat_ref = scd_eurac)
+  
+}
+
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
+plot(basin_base, add =T)
+
+
+#SCF times series for selected basin
+f_scf <- function(file_path, basin_in, basin_in_buf, aggr_fac, snow_val, provider){
+  
+  #Read file
+  scf <- raster(file_path)
+  
+  #clip basin area with buffer
+  scf_cro <- raster::crop(scf, extent(basin_in_buf))
+  scf_buf <- mask(scf_cro, basin_in_buf)
+  
+  #aggregate to simulation resolution
+  scf_agg <- aggregate(scf_buf, fact = aggr_fac, fun = modal, na.rm = TRUE)
+  
+  #get values for grid points simulated
+  scf_values <- raster::extract(scf_agg, grid_points_d_in)
+  
+  #remove lakes and glacier areas (previously determined)
+  scf_values[which(is.na(scd_eurac))] <- NA
+  
+  #Calculate snow cover fraction
+  scf_out <- length(which(scf_values == snow_val)) / length(scf_values) 
+  
+  #Extract date from file name
+  if(provider == "DLR"){
+    
+    doy <- as.numeric(substr(file_path, nchar(file_path)-6, nchar(file_path)-4))
+    yea <- substr(file_path, nchar(file_path)-11, nchar(file_path)-8)
+    date <- as.character(as.Date(doy, origin = paste0(yea, "-01-01")))
+    
+  }
+  
+  if(provider == "EURAC"){
+    
+    day <- substr(file_path, nchar(file_path)-12, nchar(file_path)-11)
+    mon <- substr(file_path, nchar(file_path)-14, nchar(file_path)-13)
+    yea <- substr(file_path, nchar(file_path)-18, nchar(file_path)-15)
+    date <- paste0(yea, "-", mon, "-", day)
+    
+  }
+  
+  return(c(date, scf_out))
+  
+}
+
+block_size <- 1000
+block_stas <- c(1, seq(block_size+1, length(file_names_sel), by = block_size))
+block_ends <- c(seq(block_size, length(file_names_sel), by = block_size), length(file_names_sel))
+
+for(b in 1:length(block_stas)){
+  
+  file_names_calc <- file_names_sel[block_stas[b]:block_ends[b]]
+  
+  print(paste(Sys.time(),"Temporal analysis snow cover fraction", "Block:", b, "out of", length(block_stas)))
+  
+  scf_out <- foreach(i = 1:length(file_names_calc), .combine = 'cbind') %dopar% {
+    
+    f_scf(file_path = paste0(scf_eurac_dir, file_names_calc[i]),
+          basin_in = basin_base,
+          basin_in_buf = basin_base_buf,
+          aggr_fac = 4,
+          snow_val = 1,
+          provider = "EURAC")
+    
+  }
+  
+  if(b == 1){
+    scf_out_all <- scf_out
+  }else{
+    scf_out_all <- cbind(scf_out_all, scf_out)
   }
   
 }
 
-#fill dummy raster with calculated data values
-lake_file_cro <- raster::crop(scf_file, extent(basin_base_buf))
-lake_file_sub <- mask(lake_file_cro, basin_base_buf)
-lake_file_sub@data@values <- lkd_valus
 
-lake_file_sub_aggr <- aggregate(lake_file_sub, fact = 4, fun = modal, na.rm = TRUE)
+date <- as.Date(as.character(scf_out_all[1, ]), "%Y-%m-%d")
+scf <- as.numeric(scf_out_all[2, ])
 
-plot(lake_file_sub_aggr)
+scf_eurac <- data.frame(date = date[order(date)],
+                        scf = scf[order(date)])
+
+plot(scf_eurac, type = "l")
+
+
 
 #visu_time----
 
@@ -344,59 +443,9 @@ plot(basin_base)
 points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
 plot(basin_base, add =T)
 
-#Resample EURAC data fit simulations
-scf_file_sub_aggr <- aggregate(scf_file_sub, fact = 4, fun = median, na.rm = TRUE)
-sc_doy_eurac <- raster::extract(scf_file_sub_aggr, grid_points_d_in)
-
-cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
-  
-  val2col(val_in = sc_doy_eurac[i],
-          dat_ref = sc_doy_eurac)
-  
-}
-
-plot(basin_base)
-points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
-plot(basin_base, add =T)
-
-#Remove lakes
-lkd_eurac <- raster::extract(lake_file_sub_aggr, grid_points_d_in)
-summary(lkd_eurac)
-lakes_ind <- which(lkd_eurac > (length(date_vali)*0.9))
-
-sc_doy_eurac[lakes_ind] <- NA
-
-cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
-  
-  val2col(val_in = sc_doy_eurac[i],
-          dat_ref = sc_doy_eurac)
-  
-}
-
-plot(basin_base)
-points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
-plot(basin_base, add = T)
-
-#Remove glaciers
-gla_eurac <- raster::extract(scf_file_sub_aggr, grid_points_d_in)
-summary(gla_eurac)
-glacs_ind <- which(gla_eurac > (length(date_vali)*0.9))
-
-sc_doy_eurac[glacs_ind] <- NA
-
-cols_spat <- foreach(i = 1:length(sc_doy_eurac), .combine = 'cbind') %dopar% {
-  
-  val2col(val_in = sc_doy_eurac[i],
-          dat_ref = sc_doy_eurac)
-  
-}
-
-plot(basin_base)
-points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
-plot(basin_base, add = T)
 
 #Calculate difference Obs. and Sim.
-scd_dif <- (sc_doy_simu - sc_doy_eurac) / 10
+scd_dif <- (sc_doy_simu - scd_eurac) / 10
 
 # scd_dif[which(abs(scd_dif) > 200)] <- NA
 
@@ -507,3 +556,25 @@ length(which(abs(scd_dif) < 28)) / length(scd_dif)
 
 plot(elevs_d, scd_dif, pch = 19, cex = 0.5, col = alpha("grey50", alpha = 0.5))
 
+
+#calc_dlr----
+
+file_names <- dir(path = scf_dlr_dir, recursive = T)
+# file_names <- file_names[-which(file_names == "README.txt")]
+file_names <- paste0(scf_dlr_dir, "/", file_names[which(nchar(file_names) == 28)])
+gsp_crs <- raster(file_names[1])
+
+basins <-  rgdal::readOGR(dsn = paste0(ezg_dir,"ezg_kombiniert.shp"))
+basin_base <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(gsp_crs, asText = T))
+
+scf_out <- foreach(i = 1:length(file_names), .combine = 'cbind') %dopar% {
+  
+  scf_ext_dlr(file_names[i])
+  
+}
+
+date <- as.Date(as.character(scf_out[1, ]), "%Y-%m-%d")
+scf <- as.numeric(scf_out[2, ])
+
+scf_dlr <- data.frame(date = date[order(date)],
+                      scf = scf[order(date)])

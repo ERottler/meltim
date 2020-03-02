@@ -442,7 +442,6 @@ for(b in 1:length(block_stas)){
   
 }
 
-
 precs_d <- precs_d_cor
 
 #snow_simu----
@@ -624,6 +623,13 @@ snows_d <- snows_d[, -points_outside]
 temps_d <- temps_d[, -points_outside]
 precs_d <- precs_d[, -points_outside]
 elevs_d <- elevs_d[-points_outside]
+
+#Lake and glacier points from EURAC snow cover data
+ind_rem <- which(is.na(scd_eurac))
+snows_d[, ind_rem] <- NA
+temps_d[, ind_rem] <- NA
+precs_d[, ind_rem] <- NA
+
 
 #analysis----
 
