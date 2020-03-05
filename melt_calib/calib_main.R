@@ -44,7 +44,7 @@ end_yea_cal <- 2014 #end year calibration period
 
 # stopCluster(my_clust)
 
-n_cores <- 35 #number of cores used for parallel computing
+n_cores <- 2 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 # my_clust <- makeCluster(n_cores)
@@ -338,10 +338,10 @@ swe_and <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_2AN.txt")
 swe_dav <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_5DF.txt"))      
 swe_wfj <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_5WJ.txt")) 
 # swe_sta <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_7ST.txt"))
-# swe_zer <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_4ZE.txt"))
+swe_zer <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_4ZE.txt"))
 # swe_ulr <- f_read_swe(slf_swe_file = paste0(base_dir, "data/slf_swe/sp_4UL.txt"))  
 
-swe_all <- cbind(swe_and$values, swe_dav$values, swe_wfj$values)
+swe_all <- cbind(swe_and$values, swe_dav$values, swe_zer$values, swe_wfj$values)
 
 swe_all <- swe_all / 1000 # [m]
 
@@ -426,13 +426,13 @@ rain_wfj <- f_meteo_ext(data_in = meteo_data_3,
                         ID_in = "WFJ",
                         var_in = "rre150d0")
 
-# temp_zer <- f_meteo_ext(data_in = meteo_data_3,
-#                         ID_in = "ZER",
-#                         var_in = "tre200d0")
-# 
-# rain_zer <- f_meteo_ext(data_in = meteo_data_3,
-#                         ID_in = "ZER",
-#                         var_in = "rre150d0")
+temp_zer <- f_meteo_ext(data_in = meteo_data_3,
+                        ID_in = "ZER",
+                        var_in = "tre200d0")
+
+rain_zer <- f_meteo_ext(data_in = meteo_data_3,
+                        ID_in = "ZER",
+                        var_in = "rre150d0")
 
 # temp_ulr <- f_meteo_ext(data_in = meteo_data_3,
 #                         ID_in = "ULR",
@@ -450,8 +450,8 @@ rain_wfj <- f_meteo_ext(data_in = meteo_data_3,
 #                         ID_in = "SMM",
 #                         var_in = "rre150d0")
 
-temps_all <- cbind(temp_ant$values, temp_dav$values, temp_wfj$values)
-precs_all <- cbind(rain_ant$values, rain_dav$values, rain_wfj$values)
+temps_all <- cbind(temp_ant$values, temp_dav$values, temp_zer$values, temp_wfj$values)
+precs_all <- cbind(rain_ant$values, rain_dav$values, rain_zer$values, rain_wfj$values)
 
 
 #Radiation data for snow simulations
@@ -470,7 +470,8 @@ radi_snow_day <- ord_day(data_in = radi_sno$gre000d0,
 radi_mea <- apply(radi_snow_day, 2, mea_na)
 
 radi_mea_smo <- smoothFFT(radi_mea, sd = 19)
-# plot(radi_mea_smo, type = "l")
+# radi_mea_smo <- radi_mea_smo/10
+plot(radi_mea_smo, type = "l")
 
 #Syntetic radiation time series based on mean values
 radi_mea_seri <- rep( c(radi_mea_smo, radi_mea_smo[365], rep(radi_mea_smo, 3)), 50)[1:nrow(temps_all)]
@@ -483,12 +484,10 @@ meteo_date <- seq(start_date, end_date, by = "day")
 
 for(i in 1:ncol(temps_all)){
   
-  # temps <- temps_all[, i]
-  # precs <- precs_all[, i]
+  temps <- temps_all[, i]
+  precs <- precs_all[, i]
   # snows_stat <- snows_stat_all[, i]
-  temps <- temps_all
-  precs <- precs_all
-  snows_stat <- swe_all
+  snows_stat <- swe_all[, i]
   
   save(temps, precs, radi_mea_seri, snows_stat, snow_params, meteo_date, sta_yea_cal, end_yea_cal,
        file = paste0(base_dir, "R/meltim/melt_calib/calib_thread/calib_snow_data.Rdata"), version = 2)
@@ -542,7 +541,7 @@ for(i in 1:ncol(temps_all)){
     
   )
   
-  max_number_function_calls = 1000
+  max_number_function_calls = 3000
   
   # source("2_optim_wrapper.R")
   
@@ -607,7 +606,7 @@ param_ranges=rbind(#define parameter ranges
   specCapRet          = c(0.01, 0.8), #Capill. retention volume as fraction of solid SWE [-]
   emissivitySnowMin   = c(0.30, 0.90), #Minimum emissivity old snow [-]
   emissivitySnowMax   = c(0.90, 0.99), #Maximum emissivity of fresh snow [-]
-  tempAir_crit        = c(-3, 3), #Threshold temperature for rain-/snowfall [°C]
+  tempAir_crit        = c(-1, 1), #Threshold temperature for rain-/snowfall [°C]
   albedoMin           = c(0.3, 0.7), #Minimum snow albedo after a long time without snowfall
   albedoMax           = c(0.8, 0.99), #Maximum snow albedo right after snowfall
   agingRate_tAirPos   = c(0.0000001,  0.0001), #Rate to describe the intensity of snow aging process at positive temperatures
@@ -653,8 +652,13 @@ max_number_function_calls = 5000
 results_individual <- NULL
 save(results_individual, file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"), version = 2)
 
-res <- optim_dds(objective_function=optim_wrapper, number_of_particles=3, number_of_parameters=NROW(param_ranges), parameter_bounds=param_ranges, initial_estimates=starting.values, lhc_init=T,
-                 logfile="melt_calib/dds.log", projectfile="melt_calib/dds.pro", load_projectfile="no", break_file=NULL, max_wait_iterations=1000, max_number_function_calls=max_number_function_calls, tryCall=F)
+# res <- optim_dds(objective_function=optim_wrapper, number_of_parameters=NROW(param_ranges), parameter_bounds=param_ranges, initial_estimates=starting.values, lhc_init=T,
+#                  logfile="melt_calib/dds.log", projectfile="melt_calib/dds.pro", load_projectfile="no", break_file=NULL, max_wait_iterations=1000, max_number_function_calls=max_number_function_calls, tryCall=F
+#                  )
+
+res <- optim_pso(objective_function=optim_wrapper, number_of_particles=50, number_of_parameters=NROW(param_ranges), parameter_bounds=param_ranges, initial_estimates=starting.values, lhc_init=T,
+                 logfile="melt_calib/pso.log", projectfile="melt_calib/pso.pro", load_projectfile="no", break_file=NULL, max_wait_iterations=1000, max_number_function_calls=max_number_function_calls, tryCall=F,
+                 max_number_of_iterations = 100)
 
 plot_optimization_progress(logfile = "melt_calib/dds.log", projectfile = "melt_calib/dds.pro")
 
@@ -686,30 +690,198 @@ for(i in 1:ncol(temps_all)){
 
 best_all
 
-for(i in 2:(ncol(best_all)-1)){
-  plot(best_all[, i], pch = 19, main = colnames(best_all)[i])
+#Simulate best run
+pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
+
+par(mfrow = c(4, 1))
+par(mar = c(2, 5.0, 2.5, 0.5))
+
+for(i in 1:ncol(temps_all)){
+  
+  temps <- temps_all[, i]
+  precs <- precs_all[, i]
+  # snows_stat <- snows_stat_all[, i]
+  snows_stat <- swe_all[, i]
+  
+  dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/dds", 1, ".log"), header = T, sep = "\t")
+  
+  best_row <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
+  
+  best_run <- dds_log[best_row, ]; best_run
+  
+  #Modify model parameters
+  # snow_params$a0                <- params[which(names(params) == "a0")]
+  # snow_params$a1                <- params[which(names(params) == "a1")]
+  snow_params$kSatSnow          <- best_run$kSatSnow
+  snow_params$densDrySnow       <- best_run$densDrySnow
+  snow_params$specCapRet        <- best_run$specCapRet
+  snow_params$emissivitySnowMin <- best_run$emissivitySnowMin
+  snow_params$emissivitySnowMax <- best_run$emissivitySnowMax
+  snow_params$tempAir_crit      <- best_run$tempAir_crit
+  snow_params$albedoMin         <- best_run$albedoMin
+  snow_params$albedoMax         <- best_run$albedoMax
+  snow_params$agingRate_tAirPos <- best_run$agingRate_tAirPos
+  snow_params$agingRate_tAirNeg <- best_run$agingRate_tAirNeg
+  snow_params$weightAirTemp     <- best_run$weightAirTemp
+  # # snow_params$tempAmpli         <- params[which(names(params) == "tempAmpli")]
+  
+  if(is.vector(temps)){
+    numb_stat <- 1
+    meteo_length <- length(temps)
+  }else{
+    numb_stat <- ncol(temps)
+    meteo_length <- nrow(temps) 
+  }
+  
+  snows <- foreach(k = 1:1, .combine = 'cbind') %dopar% {
+    
+    swe_sim   <- rep(NA, meteo_length)
+    sec_sim   <- rep(NA, meteo_length)
+    alb_sim   <- rep(NA, meteo_length)
+    sde_sim   <- rep(NA, meteo_length) #snow depth [m]
+    lfr_sim   <- rep(NA, meteo_length) #snow depth [m]
+    
+    swe_init <- .0
+    sec_init <- .0
+    alb_init <- snow_params$albedoMax
+    sde_init <- .0
+    lfr_init <- .0
+    
+    swe_sim[1] <- swe_init
+    sec_sim[1] <- sec_init
+    alb_sim[1] <- alb_init
+    sde_sim[1] <- sde_init
+    lfr_sim[1] <- lfr_init
+    
+    if(numb_stat > 1){
+      temps_sel <- temps[, k]
+      precs_sel <- precs[, k]
+    }else{
+      temps_sel <- temps
+      precs_sel <- precs
+    }
+    
+    
+    for(i in 2:meteo_length){
+      
+      sim_out <- snowModel_inter(
+        #Forcings
+        precipSumMM = precs_sel[i],
+        shortRad = radi_mea_seri[i],
+        tempAir = temps_sel[i],
+        pressAir = 1000,
+        relHumid = 70,
+        windSpeed = 1,
+        cloudCoverage = 0.5,
+        #Parameters
+        precipSeconds = snow_params$precipSeconds,
+        a0 = snow_params$a0,
+        a1 = snow_params$a1,
+        kSatSnow = snow_params$kSatSnow,
+        densDrySnow = snow_params$densDrySnow,
+        specCapRet = snow_params$specCapRet,
+        emissivitySnowMin = snow_params$emissivitySnowMin,
+        emissivitySnowMax = snow_params$emissivitySnowMax,
+        tempAir_crit = snow_params$tempAir_crit,
+        albedoMin = snow_params$albedoMin,
+        albedoMax = snow_params$albedoMax,
+        agingRate_tAirPos = snow_params$agingRate_tAirPos,
+        agingRate_tAirNeg = snow_params$agingRate_tAirNeg,
+        soilDepth = snow_params$soilDepth,
+        soilDens = snow_params$soilDens,
+        soilSpecHeat = snow_params$soilSpecHeat,
+        weightAirTemp = snow_params$weightAirTemp,
+        tempMaxOff = snow_params$tempMaxOff,
+        tempAmpli = snow_params$tempAmpli,
+        #States
+        snowEnergyCont = sec_sim[i-1],
+        snowWaterEquiv = swe_sim[i-1],
+        albedo = alb_sim[i-1],
+        #Outputs
+        TEMP_MEAN = NA,
+        TEMP_SURF = NA,
+        LIQU_FRAC = NA,
+        flux_R_netS = NA,
+        flux_R_netL = NA,
+        flux_R_soil = NA,
+        flux_R_sens = NA,
+        stoi_f_prec = NA,
+        stoi_f_subl = NA,
+        stoi_f_flow = NA,
+        flux_M_prec = NA,
+        flux_M_subl = NA,
+        flux_M_flow = NA,
+        rate_G_alb = NA
+      )
+      
+      sec_sim[i] <- sim_out[1]
+      swe_sim[i] <- sim_out[2]
+      alb_sim[i] <- sim_out[3]
+      lfr_sim[i] <- sim_out[6]
+      #Densitiy of dry snow = Density of snow * (1 - Liquid/Solid fraction)
+      
+      # densSnow <- snow_params$densDrySnow / (1 - sim_out[6])  
+      # 
+      # #maximum density = density of water
+      # if(densSnow > 1000){
+      #   densSnow <- 1000
+      # }
+      # 
+      # sde_sim[i] <- sim_out[2] * (1/(densSnow/1000))
+      
+    }
+    
+    swe_sim
+    
+  }
+  
+  min_ind <- which(meteo_date == paste0(sta_yea_cal, "-01-01"))
+  max_ind <- which(meteo_date == paste0(end_yea_cal, "-12-31"))
+  
+  snows_cal <- snows[min_ind:max_ind]
+  snows_stat_cal <- snows_stat[min_ind:max_ind]
+  meteo_date_cal <- meteo_date[min_ind:max_ind]
+  
+  #plot results
+  y_max <- max_na(c(snows_cal, snows_stat_cal))
+  y_min <- min_na(c(snows_cal, snows_stat_cal))
+  x_tics <- which(format(meteo_date_cal, '%m-%d') == '01-01')
+  x_labs <- which(format(meteo_date_cal, '%m-%d') == '07-01')
+  x_labels <- unique(format(meteo_date_cal, '%Y'))
+  
+  plot(snows_cal, type = "n", ylim = c(y_min, y_max), axes = F, ylab = "", 
+       xlab = "", xaxs = "i")
+  abline(v = c(x_tics), lty = "dashed", col = "grey50", lwd = 0.8)
+  lines(snows_cal, col = scales::alpha("black", alpha = 1.0), lwd = 1.5)
+  points(snows_stat_cal, pch = 1, col = scales::alpha("darkblue", alpha = 1.0), cex = 1.5)
+  axis(2, cex = 1.5, mgp=c(3, 0.50, 0), cex.axis = 1.6, tck = -0.02)
+  axis(1, at = x_tics, labels = rep("", length(x_tics)), tck = -0.07)
+  axis(1, at = x_labs, labels = x_labels, tick = F, mgp=c(3, 0.50, 0), cex.axis = 1.4)
+  mtext(paste0("Station ", i), side= 3, line = 0.3, cex = 1.4, adj = 0.0)
+  mtext("SWE [m]", side= 2, line = 2.5, cex = 1.2, adj = 0.5)
+  box()
+  
 }
 
+dev.off()
 
 #visu_all----
 
-dds_log <- read.table(paste0(base_dir, "meltim/melt_calib/dds", ".log"), header = T, sep = "\t")
+dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/dds", ".log"), header = T, sep = "\t")
 
 best_row <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
 
-best_run <- dds_log[best_row, ]
+best_run <- dds_log[best_row, ]; best_run
 
 
 load(file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"))
 
 results_individual
 
-plot(results_individual[best_row, ], stat_calib$altitude)
-plot(stat_calib$altitude, results_individual[best_row, ])
 
-#simu_best----
+#simu_best_all----
 
-dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/dds", ".log"), header = T, sep = "\t")
+dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/pso", ".log"), header = T, sep = "\t")
 
 best_row <- min_na(which(dds_log$objective_function == min_na(dds_log$objective_function)))
 
@@ -848,31 +1020,13 @@ snows_cal <- snows[min_ind:max_ind, ]
 snows_stat_cal <- snows_stat[min_ind:max_ind, ]
 meteo_date_cal <- meteo_date[min_ind:max_ind]
 
-load(file =  paste0(base_dir, "R/meltim/melt_calib/results_stations.Rdata"))
-results_individual[best_row+1, ]
-mean(results_individual[best_row+1, ])
+pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
 
-val_all <- NULL
-for(i in 1:ncol(snows_cal)){
-  
-  val_cal <- obj_func(snows_cal[, i], snows_stat_cal[, i])
-  val_all <- c(val_all, val_cal)
-  print(val_cal)
-  
-}
-mean(val_all)
-for(i in 1:3){
-  plot(snows_cal[, i], snows_stat_cal[, i])
-  print(obj_func(snows_cal[, i], snows_stat_cal[, i]))
-  abline(0, 1)
-}
-
-pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 7.5)
-
-par(mfrow = c(3, 1))
+par(mfrow = c(4, 1))
 par(mar = c(2, 5.0, 2.5, 0.5))
+par(family = "serif")
 
-main_plots <- c("a) Andermatt (1440 m)", "b) Davos (1560 m)", "c) Weissfluhjoch (2540 m)")
+main_plots <- c("a) Andermatt (1440 m)", "b) Davos (1560 m)", "c) Zermatt (1600 m)","d) Weissfluhjoch (2540 m)", "Zermatt")
 
 for(i in 1:ncol(snows_cal)){
 
@@ -885,14 +1039,19 @@ for(i in 1:ncol(snows_cal)){
   plot(snows_cal[, i], type = "n", ylim = c(y_min, y_max), axes = F, ylab = "", 
        xlab = "", xaxs = "i")
   abline(v = c(x_tics), lty = "dashed", col = "grey50", lwd = 0.8)
-  lines(snows_cal[, i], col = scales::alpha("black", alpha = 1.0), lwd = 1.5)
-  points(snows_stat_cal[, i], pch = 1, col = scales::alpha("darkblue", alpha = 1.0), cex = 1.5)
+  lines(snows_cal[, i], col = scales::alpha("black", alpha = 1.0), lwd = 1.6)
+  points(snows_stat_cal[, i], pch = 21, bg = scales::alpha("steelblue4", alpha = 0.5), 
+         cex = 1.5, col = "steelblue")
   axis(2, cex = 1.5, mgp=c(3, 0.50, 0), cex.axis = 1.6, tck = -0.02)
   axis(1, at = x_tics, labels = rep("", length(x_tics)), tck = -0.07)
   axis(1, at = x_labs, labels = x_labels, tick = F, mgp=c(3, 0.50, 0), cex.axis = 1.4)
   mtext(main_plots[i], side= 3, line = 0.3, cex = 1.4, adj = 0.0)
   mtext("SWE [m]", side= 2, line = 2.5, cex = 1.2, adj = 0.5)
   box()
+  if(i == 1){
+    legend("topleft", c("obs", "sim."), pch = 19, cex = 1.5, col = c("steelblue4", "black"), bg = "white")
+    
+  }
   
 }
 
