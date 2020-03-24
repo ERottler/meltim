@@ -6,7 +6,8 @@
 ###
 
 pacman::p_load(devtools, leaflet, raster, tmap, sf, prettymapr, meltimr, alptempr, rfs, viridis, 
-               shape, scales, emdbook, zoo, zyp, maptools, rworldmap)
+               shape, scales, emdbook, zoo, zyp, maptools, rworldmap, parallel, doParallel,
+               DescTools)
 
 #set base direcoty
 base_dir <- "U:/rhine_snow/"
@@ -14,8 +15,7 @@ data_dir <- "D:/nrc_user/rottler/"
 grdc_dir <- "D:/nrc_user/rottler/GRDC_DAY/"
 
 #Load results snow simulations
-# load(paste0(base_dir, "R/draft_snow_17_12.RData"))
-# load(paste0(base_dir, "R/draft_meltim.RData"))
+load("U:/rhine_snow/R/figs_exp/sim_scf_exp.RData")
 
 #map_over----
 
@@ -58,26 +58,27 @@ gauges    <- sp::spTransform(gauges_84, CRS = crs(basin_base, asText = T))
 
 #corp DEM sub-basin area
 my_ext <- extent(basin_base)
-my_ext_buf <- my_ext + c(-20000, +30000, -30000, +12000) #xmin, xmax, ymin, ymax
+my_ext_buf <- my_ext + c(-20000, +30000, -40000, +13000) #xmin, xmax, ymin, ymax
 
 my_box <- as(my_ext_buf, 'SpatialPolygons')
 dem_cro_swiss <- raster::crop(dem, extent(my_box))
 dem_sub_swiss <- mask(dem_cro_swiss, my_box)
 
-#Snow stations
+#Meteo stations
 
 stat_id <- c("WFJ", "SAE", "ARO", "BIV", "SIA", "GRC", "DAV", "ANT", "MVE", "NAP", "SMM", "ABO", "SCU", "DIS", "CHM",
-             "ROB", "GTT", "CDF", "CHD", "ELM", "EIN", "SMA", "BER", "BAS")
+             "ROB", "GTT", "CDF", "CHD", "ELM", "EIN", "SMA", "BER", "BAS", "ZER", "5WJ", "4ZE", "5DF", "2AN")
 stat_na <- c("Weißfluhjoch", "Saentis", "Arosa", "Bivio", "Segl-Maria", "Graechen", "Davos", "Andermatt", "Montana", "Napf",
              "Sta. Maria, Val Muestair", "Adelboden", "Scuol", "Disentis", "Chaumant", "Poschiavo/Robbia",
              "Guttannen", "La Chaux-de-Fonds", "Chateaux-d'Oez", "Elm", "Einsiedeln", "Zuerich/Fluntern",
-             "Bern, Zollikofen", "Basel Binningen")
+             "Bern, Zollikofen", "Basel Binningen", "Zermatt", "Weissfluhjoch", "Zermatt", "Davos Flueestr.", "Andermatt")
 stat_al <- c(2691, 2502, 1878, 1856, 1804, 1606, 1594, 1438, 1427, 1404, 1386, 1322, 1303, 1197, 1136, 1078, 1055, 1017,
-             1028,  957, 910, 555, 552, 316)
+             1028,  957, 910, 555, 552, 316, 1638, 2540, 1600, 1560, 1440)
 stat_lo <- c(9.8000, 9.3500, 9.6833, 9.6666, 9.7666, 7.8333, 9.8500, 8.5833, 7.4666, 7.94, 10.4333, 7.5666, 10.2833, 8.8500, 6.9833,
-             10.0666, 8.3000, 6.8000, 7.1333, 9.1833, 8.7500, 8.5666, 7.4666, 7.5836)
+             10.0666, 8.3000, 6.8000, 7.1333, 9.1833, 8.7500, 8.5666, 7.4666, 7.5836, 7.7531, 9.8093, 7.7512, 9.8482, 8.5919)
 stat_la <- c(46.8333, 47.2500, 46.8000, 46.4666, 46.4333, 46.2000, 46.8166, 46.6333,  46.3000, 47.0047222, 46.6000, 46.5000, 46.8000, 46.7000,
-             47.0500, 46.3500, 46.6500, 47.0833, 46.4833, 46.9166, 47.1333, 47.3833, 46.9833, 47.5411)
+             47.0500, 46.3500, 46.6500, 47.0833, 46.4833, 46.9166, 47.1333, 47.3833, 46.9833, 47.5411, 46.0291667, 46.8294, 46.0234,
+             46.8125, 46.6329)
 stat_nu <- 1:length(stat_id)
 
 stat_meta <- data.frame(V0 = stat_nu,
@@ -89,7 +90,8 @@ stat_meta <- data.frame(V0 = stat_nu,
 colnames(stat_meta) <- c("Number", "ID", "Name", "Alt. [m]", "Longitude", "Latitude")
 
 #Select stations
-stats_used <- c("WFJ", "ARO", "SIA", "GRC", "DAV", "ANT", "SMM", "ABO", "DIS", "ELM", "SMA", "NAP", "EIN")
+stats_used <- c("WFJ", "ARO", "SIA", "GRC", "DAV", "ANT", "SMM", "ABO", "DIS", "ELM", "SMA", "NAP", "EIN", "ZER",
+                "BER", "BAS", "5WJ", "4ZE", "5DF", "2AN")
 
 stat_meta <- stat_meta[stat_meta$ID %in% stats_used, ]
 
@@ -124,11 +126,11 @@ plot(gauges, add = T, pch = 23, cex = 1.7,
 plot(gauges, add = T, pch = 19, cex = 0.5)
 plot(snow, add = T, pch = "*", cex = 1.3)
 lab_mov <- 5200
-lab_pos_1 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), +lab_mov, rep(lab_mov, 7), +lab_mov)
-lab_pos_2 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), -lab_mov, rep(lab_mov, 7), -lab_mov)
+lab_pos_1 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), +lab_mov, rep(lab_mov, 7), +lab_mov, lab_mov,        0, -lab_mov, -lab_mov-4000,  lab_mov+3000, lab_mov+4000, -lab_mov)
+lab_pos_2 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), -lab_mov, rep(lab_mov, 7), -lab_mov, lab_mov, -lab_mov, lab_mov,  lab_mov,   lab_mov,       0,  -lab_mov)
 text(snow@coords[, 1]+lab_pos_1, snow@coords[, 2]+lab_pos_2, labels = stat_meta$ID, col = "black", cex = 0.9)
 addscalebar(plotunit = "m", widthhint = 0.2, htin = 0.15, pos = "topleft",
-            padin = c(0.3, 0.5))
+            padin = c(0.2, 0.2))
 
 dev.off()
 
@@ -215,7 +217,7 @@ dev.off()
 
 #snow_stats----
 
-sta_yea <- 1959
+sta_yea <- 1954
 end_yea <- 2018
 
 #Read snow station data
@@ -364,19 +366,19 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.2)#plot labels
-  axis(2, mgp=c(3, 0.10, 0), tck = -0.015, cex.axis = 1.2)
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
+  axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.4)
   if(do_head){
-    mtext("a) Snow depth raster", side= 3, line = 0.5, cex = 1.2, adj = 0.0)
-    mtext("[cm]", side= 3, line = 0.2, cex = 0.9, adj = 1.0)
+    mtext("a) Snow depth raster", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
+    mtext("[cm]", side= 3, line = 0.3, cex = 1.2, adj = 1.0)
     # legend("topleft", c("1959-1988", "1989-2018"), pch = 19, cex = 1.0, col = c(col_1, col_2), bg = "white")
   }
   box()
   
-  par(mar = c(1.7, 0.2, 0.5, 1.5))
+  par(mar = c(1.7, 0.2, 0.5, 1.7))
   
   alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-  axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.2)
+  axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.3)
   # mtext("cm", side = 3, line = 0.2, cex = 1.0)
   box()
   
@@ -403,14 +405,14 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   lines(sno_mea_2, col = col_2, lwd = my_lwd)
   # abline(v = doy_max_1, col = col_1, lty = "dashed", lwd = lwd_ab)
   # abline(v = doy_max_2, col = col_2,  lty = "dashed", lwd = lwd_ab)
-  axis(2, mgp=c(3, 0.05, 0), tck = -0.015, cex.axis = 1.2)
+  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.4)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.2)#plot labels
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
   if(do_head){
-    mtext("b) Snow depth mean", side= 3, line = 0.5, cex = 1.2, adj = 0.0)
-    mtext("[cm]", side= 3, line = 0.2, cex = 0.9, adj = 1.0)
+    mtext("b) Snow depth mean", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
+    mtext("[cm]", side= 3, line = 0.2, cex = 1.2, adj = 1.0)
     legend("topleft", c("1958-1987", "1988-2017"), pch = 19, cex = 1.1, col = c(col_1, col_2), bg = "white")
   }
   box(lwd = 0.7)
@@ -428,14 +430,14 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   abline(v = x_axis_tic, col = "grey55",  lty = "dashed", lwd = 0.7)
   lines(diff_mea_1, col = col_1, lwd = my_lwd)
   lines(diff_mea_2, col = col_2, lwd = my_lwd)
-  axis(2, mgp=c(3, 0.05, 0), tck = -0.015, cex.axis = 1.2)
+  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.4)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.2)#plot labels
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
   if(do_head){
-    mtext("c) Acc./Melt rate", side= 3, line = 0.5, cex = 1.2, adj = 0.0)
-    mtext("[cm/1d]", side= 3, line = 0.2, cex = 0.9, adj = 1.0)
+    mtext("c) Acc./Melt rate", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
+    mtext("[cm/1d]", side= 3, line = 0.2, cex = 1.2, adj = 1.0)
   }
   # abline(v = x_axis_tic, col = "grey55", lty = "dashed", lwd = 0.8)
   # grid(nx = 0, ny = 5, lty = "dashed", col = "grey55", lwd = 0.8)
@@ -467,21 +469,21 @@ sing_snow("ELM")
 sing_snow("SMA")
 
 #Station names
-cex_header <- 1.0
+cex_header <- 1.2
 par(mar = c(0,0,0,0))
 
 plot(1:100, 1:100, axes = F, type = "n", xlab = "", ylab = "")
-mtext("WFJ 2691 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.968, outer = T)
-mtext("ARO 1878 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.872, outer = T)
-mtext("SIA 1804 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.777, outer = T)
-mtext("GRC 1606 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.682, outer = T)
-mtext("DAV 1594 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.586, outer = T)
-mtext("ANT 1438 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.492, outer = T)
-mtext("SMM 1386 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.401, outer = T)
-mtext("ABO 1322 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.302, outer = T)
-mtext("DIS 1197 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.211, outer = T)
-mtext("ELM 957 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.117, outer = T)
-mtext("SMA 555 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.025, outer = T)
+mtext("WFJ 2691 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.974, outer = T)
+mtext("ARO 1878 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.878, outer = T)
+mtext("SIA 1804 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.781, outer = T)
+mtext("GRC 1606 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.685, outer = T)
+mtext("DAV 1594 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.589, outer = T)
+mtext("ANT 1438 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.493, outer = T)
+mtext("SMM 1386 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.397, outer = T)
+mtext("ABO 1322 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.300, outer = T)
+mtext("DIS 1197 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.208, outer = T)
+mtext("ELM 957 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.112, outer = T)
+mtext("SMA 555 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.018, outer = T)
 
 #Analytical method
 
@@ -599,7 +601,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   # cols_max <- colorRampPalette(c("grey98", "gold3",  "orangered4", "firebrick4", "firebrick4", "darkred"))(n_max)
   
   cols_min <- colorRampPalette(c("darkred", "firebrick4", "orangered4", "gold3", "grey98"))(n_min)
-  cols_max <- colorRampPalette(c("grey98", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
+  cols_max <- colorRampPalette(c("grey98", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
   my_col <- colorRampPalette(c(cols_min, cols_max))(200)
   # my_bre <- seq(min_na(qdif[, ]), max_na(qdif[, ]), length.out = 201)
   my_bre <- c(seq(-max_na(abs(qdif)), 0, length.out = n_min),
@@ -700,10 +702,10 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   
   # cols_min <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = 1)[c(1,1, 2:4)], "grey98"))(100)
   # cols_max <- grDevices::colorRampPalette(c("grey98", "gold3", "orangered4", "darkred"))(100)
-  cols_min <- colorRampPalette(c("darkred", "goldenrod3", "gold3", "white"))(50)
-  cols_max <- colorRampPalette(c("white", "azure3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(50)
-  cols_hydro <- colorRampPalette(c(cols_min, "white", cols_max))(200)
-  # cols_hydro <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = 1)))(100)
+  cols_min <- colorRampPalette(c("darkred", "darkorange4", "goldenrod3", "gold3", "lightgoldenrod2", "grey98"))(50)
+  cols_max <- colorRampPalette(c("grey98", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(50)
+  cols_hydro <- colorRampPalette(c(cols_min, cols_max))(200)
+  # cols_hydro <- grDevices::colorRampPalette(c(viridis::viridis(9, direction = -1)))(200)
   # plot(1:100, 1:100, pch = 19, col = cols_min)
   
   max_break <- max_na(data_day)
@@ -823,22 +825,20 @@ points(c(214, 215, 216, 217, 219, 221, 224, 230, 235, 240), c(2300, 2400, 2500, 
 abline(h = c(500, 1000, 1500, 2000, 2500, 3000), lty = "dotted", col = "grey55", lwd = 0.8)
 abline(v = x_axis_tic, lty = "dotted", col = "grey55", lwd = 0.8)
 axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-     col = "black", col.axis = "black", tck = -0.04)#plot ticks
+     col = "black", col.axis = "black", tck = -0.05)#plot ticks
 axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-     col="black", col.axis="black", mgp=c(3, 0.10, 0), cex.axis = 0.9)#plot labels
-axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.0)
-mtext("Elevation [m]", side = 2, line = 1.3, cex = 1.0, adj = 0.5)
-mtext("b) Snow melt elevation compensation", side = 3, line = 0.15, cex = 1.2, adj = 0.0)
-legend("topleft", c("future", "present"), col = c(col_2, col_1), pch = 19, bg = "white")
-Arrows(x0 = 166, x1 =156, y0 = 1250, y1 = 1250, arr.type = "triangle")
-Arrows(x0 = 205, x1 =192, y0 = 2000, y1 = 2000, arr.type = "triangle")
-Arrows(x0 = 254, x1 =243, y0 = 3000, y1 = 3000, arr.type = "triangle")
-Arrows(x0 = 130, x1 =130, y0 = 750,  y1 = 1100, arr.type = "triangle", col = "black")
-Arrows(x0 = 162, x1 =162, y0 = 1650, y1 = 2000, arr.type = "triangle", col = "black")
-Arrows(x0 = 208, x1 =208, y0 = 2650, y1 = 3000, arr.type = "triangle", col = "black")
+     col="black", col.axis="black", mgp=c(3, 0.07, 0), cex.axis = 1.1)#plot labels
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.1)
+mtext("Elevation [m]", side = 2, line = 1.3, cex = 1.3, adj = 0.5)
+mtext("b) Snow melt elevation compensation", side = 3, line = 0.15, cex = 1.4, adj = 0.0)
+legend("topleft", c("future", "present"), col = c(col_2, col_1), pch = 19,  box.lwd = 1, box.col = "black", bg = "white", cex = 1.2)
+Arrows(x0 = 166, x1 =156, y0 = 1250, y1 = 1250, arr.type = "triangle", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
+Arrows(x0 = 205, x1 =192, y0 = 2000, y1 = 2000, arr.type = "triangle", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
+Arrows(x0 = 254, x1 =243, y0 = 3000, y1 = 3000, arr.type = "triangle", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
+Arrows(x0 = 130, x1 =130, y0 = 750,  y1 = 1100, arr.type = "triangle", col = "black", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
+Arrows(x0 = 162, x1 =162, y0 = 1650, y1 = 2000, arr.type = "triangle", col = "black", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
+Arrows(x0 = 208, x1 =208, y0 = 2650, y1 = 3000, arr.type = "triangle", col = "black", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
 box()
-
-
 
 dev.off()
 
@@ -852,7 +852,7 @@ layout(matrix(c(rep(c(1, 5, 9), 8), 2, 6, 10,
               3, 18), widths=c(), heights=c())
 # layout.show(n=12)
 
-snow_sim_plot <- function(data_plot, cols, breaks, header, lab_unit){
+snow_sim_plot <- function(data_plot, cols, breaks, header, lab_unit, elev_bands = my_elev_bands){
   
   par(mar = c(2.2, 3.5, 2.5, 0.2))
   par(family = "serif")
@@ -865,75 +865,1942 @@ snow_sim_plot <- function(data_plot, cols, breaks, header, lab_unit){
         z = data_plot, col = cols, breaks = breaks,
         ylab = "", xlab = "", axes = F)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
-       col = "black", col.axis = "black", tck = -0.04)#plot ticks
+       col = "black", col.axis = "black", tck = -0.06)#plot ticks
   axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.6)#plot labels
-  axis(2, mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.6)
+       col="black", col.axis="black", mgp=c(3, 0.40, 0), cex.axis = 1.7)#plot labels
+  axis(2, mgp=c(3, 0.25, 0), tck = -0.02, cex.axis = 1.6)
   mtext("Elevation", side = 2, line = 1.8, cex = 1.3)
   mtext(header, side = 3, line = 0.3, cex = 1.5, adj = 0.0)
-  mtext(lab_unit, side = 3, line = 0.2, cex = 1.2, adj = 1.0)
+  mtext(lab_unit, side = 3, line = 0.3, cex = 1.3, adj = 1.0)
   box()
   
   par(mar = c(2.2, 0.2, 2.5, 3.0))
   
   alptempr::image_scale(as.matrix(data_plot), col = cols, breaks = breaks, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-  axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+  axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.5)
   box()
   
   
 }
 
 #SWE depth mean
-my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
+my_col <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(200)
 my_bre <- seq(alptempr::min_na(smea_band), alptempr::max_na(smea_band), length.out = length(my_col)+1)
 
 snow_sim_plot(smea_band, cols = my_col, breaks = my_bre,
               header = "a) SWE depth mean", lab_unit = "[m]")
 
 #SWE depth trend
-cols_min <- colorRampPalette(c("darkred", "firebrick4", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
 cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
 
 my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
 my_bre <- seq(-max_na(abs(sslo_band)), max_na(abs(sslo_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(sslo_band, cols = my_col, breaks = my_bre,
-              header = "b) SWE depth mean", lab_unit = "[m/dec]")
+              header = "b) SWE depth trend", lab_unit = "[m/dec]")
 
 #SWE volume mean
-my_col <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
+my_col <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(200)
 my_bre <- seq(alptempr::min_na(vmea_band), alptempr::max_na(vmea_band), length.out = length(my_col)+1)
 
 snow_sim_plot(vmea_band, cols = my_col, breaks = my_bre,
-              header = "c) SWE volume mean", lab_unit = "[hm?]")
+              header = "c) SWE volume mean", lab_unit = "[hm³]")
 
 #SWE volume trend
-cols_min <- colorRampPalette(c("darkred", "firebrick4", "orange3", "darkgoldenrod3", "grey98"))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
 cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
 
 my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vslo_band)), max_na(abs(vslo_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vslo_band, cols = my_col, breaks = my_bre,
-              header = "d) SWE depth mean", lab_unit = "[hm?/dec]")
+              header = "d) SWE volume trend", lab_unit = "[hm³/dec]")
 
 #SWE volume diff mean
-cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "darkred"))(100)
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
 cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
 my_col <- c(cols_min, cols_max)
-my_bre <- seq(alptempr::min_na(vdif_band), alptempr::max_na(vdif_band), length.out = length(my_col)+1)
+my_bre <- seq(-max_na(abs(vdif_band)), max_na(abs(vdif_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vdif_band, cols = my_col, breaks = my_bre,
-              header = "e) Accum./Melt mean", lab_unit = "[hm?/dec]")
+              header = "e) Accum./Melt mean", lab_unit = "[hm³/dec]")
 
 #SWE volume diff trend
-cols_max <- colorRampPalette(c("grey98", "darkgoldenrod3", "orange3", "firebrick4", "firebrick4", "darkred", "darkred"))(n_max)
-cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(n_min)
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
 my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vdis_band)), max_na(abs(vdis_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vdis_band, cols = my_col, breaks = my_bre,
-              header = "f) Accum./Melt mean", lab_unit = "[hm?/dec]")
+              header = "f) Accum./Melt trend", lab_unit = "[hm³/dec]")
 
 dev.off()
+
+
+#basin_flood----
+
+#calculations
+
+sno_vol_dif <- c(NA, diff(sno_vol_basin))
+
+snow_vol_dif_mel <- sno_vol_dif
+snow_vol_dif_mel[which(snow_vol_dif_mel > 0)] <- NA
+
+sno_vol_dif_acc <- sno_vol_dif
+sno_vol_dif_acc[which(sno_vol_dif < 0)] <- NA
+
+#Moving average sum
+
+sno_vol_dif_mel_ma_14 <- rollapply(data = snow_vol_dif_mel, width = 14,
+                                   FUN = sum_na, align = "center", fill = NA)
+
+sno_vol_dif_acc_ma_14 <- rollapply(data = sno_vol_dif_acc, width = 14,
+                                   FUN = sum_na, align = "center", fill = NA)
+
+#Order data by day
+
+data_day_mel_14 <- ord_day(data_in = sno_vol_dif_mel_ma_14,
+                           date = date_snow,
+                           start_y = 1954,
+                           end_y = 2014,
+                           break_day = 274,
+                           do_ma = F,
+                           window_width = 30)
+
+data_day_acc_14 <- ord_day(data_in = sno_vol_dif_acc_ma_14,
+                           date = date_snow,
+                           start_y = 1954,
+                           end_y = 2014,
+                           break_day = 274,
+                           do_ma = F,
+                           window_width = 30)
+
+#Discharge data gauge Basel
+grdc_base <- read_grdc(paste0(grdc_dir, "6935051_Q_Day.Cmd.txt"))
+
+grdc_day_base <- ord_day(data_in = grdc_base$value,
+                         date = grdc_base$date,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274)
+
+#Basin precipitation
+
+prec_basin_ms_3 <- rollapply(data = prec_basin, width = 3,
+                             FUN = sum_na, align = "center", fill = NA)
+
+prec_day_ms_3 <- ord_day(data_in = prec_basin_ms_3,
+                         date = date_snow,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274)
+
+#Timing + magnitude 14-day melt max all evelation bands
+
+yea_min_mag_14_all <- NULL
+yea_min_doy_14_all <- NULL
+
+for (i in 1:ncol(svolu_d_band)) {
+  
+  print(paste0(i, " out of ", ncol(svolu_d_band)))
+  
+  svol_stat <- svolu_d_band[, i]
+  
+  svol_stat_dif <- c(NA,diff(svol_stat))
+  
+  svol_stat_dif[which(svol_stat_dif > 0)] <- NA
+  
+  #Moving average filter
+  svol_stat_dif_ma_14 <- rollapply(data = svol_stat_dif, width = 14,
+                                   FUN = sum_na, align = "center", fill = NA)
+  
+  #Order data by day
+  data_day_14 <- ord_day(data_in = svol_stat_dif_ma_14,
+                         date = date_snow,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274,
+                         do_ma = F,
+                         window_width = 30)
+  
+  yea_min_mag_14 <- apply(data_day_14, 1, min_na)
+  
+  min_doy <- function(data_in){
+    
+    doy_min <- which(data_in == min_na(data_in))[1]
+    
+    return(doy_min)
+  }
+  
+  yea_min_doy_14 <- apply(data_day_14, 1, min_doy)
+  
+  
+  #Collect results
+  
+  yea_min_mag_14_all <- cbind(yea_min_mag_14_all, yea_min_mag_14)
+  yea_min_doy_14_all <- cbind(yea_min_doy_14_all, yea_min_doy_14)
+  
+}
+
+#Export plot
+
+pdf(paste0(base_dir,"R/figs_exp/basin_flood.pdf"), width = 8, height = 4*2.6)
+
+melt_plot <- function(i, head_ind = "", do_labs = F){
+  
+  # layout(matrix(c(1,2, 3,3
+  # ),
+  # 2, 2), widths=c(), heights=c())
+  col_rain <- "black"
+  col_accu_basin <- "grey35" #viridis(100)[40]
+  col_melt_basin <- "grey35" #"steelblue4" #"darkgoldenrod4"
+  col_dis <- "steelblue4" #"grey25"
+  alpha_melt <- 0.8
+  alpha_accu <- 0.6
+  alpha_disc <- 0.6
+  lwd_lines <- 1.5
+  
+  snow_acc_plot <-  data_day_acc_14/1000000
+  snow_mel_plot <-  data_day_mel_14/1000000
+  disc_data_plot <- grdc_day_base *24*3600/1000000
+  rain_data_plot <- prec_day_ms_3/1000000
+  # rain_data_plot <- prec_day_ms_5/1000000
+  
+  x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+  x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+  my_years <- 1954:2014
+
+  #Snow accumulation/melt
+  x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+  x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+  my_years <- 1954:2014
+  
+  par(mar = c(1.3, 2.8, 1.3, 2.8))
+  par(family = "serif")
+  
+  snow_mel_plot[i, is.na(snow_mel_plot[i, ])] <- 0
+  snow_acc_plot[i, is.na(snow_acc_plot[i, ])] <- 0
+  #Snow melt/acc axis labels
+  snow_labs_all <- c(-3000, -2500, -2000, -1500, -1000, -500, 500, 1000, 1500, 2000, 2500, 3000)
+  snow_max <- max_na(abs(c(snow_mel_plot[i, ], snow_acc_plot[i, ])))
+  snow_labs <- snow_labs_all[which(abs(snow_labs_all) < snow_max)]
+  #Rain labels
+  rain_labs_all <- c(500, 1000, 1500, 2000, 2500, 3000, 3500)
+  rain_max <- max_na(rain_data_plot[i, ])
+  rain_labs <- rain_labs_all[which(abs(rain_labs_all) < rain_max)]
+  #Discharge labels
+  disc_labs_all <- c(0, 50, 100, 150, 200, 300, 400, 600, 800)
+  disc_max <- max_na(disc_data_plot[i, ])
+  disc_labs <- disc_labs_all[which(abs(disc_labs_all) < disc_max)]
+  
+  #Snow volume basin
+  plot(snow_acc_plot[i, ], type = "n", axes = F, lwd = 2,
+       ylim = c(max_na(abs(c(snow_mel_plot[i, ], snow_acc_plot[i, ])))*-2,
+                max_na(abs(c(snow_mel_plot[i, ], snow_acc_plot[i, ])))*2))
+  # abline(v = x_axis_tic, col = "black", lwd = 0.8, lty = "dotted")
+  lines(snow_mel_plot[i, ], col = alpha(col_melt_basin, alpha = 0.9), lwd = 1.8)
+  polygon(x = c(0.99, 1:length(snow_mel_plot[i, ]), length(snow_mel_plot[i, ])+0.01), y = c(0, snow_mel_plot[i, ], 0),
+          col = alpha(col_melt_basin, alpha = alpha_melt), border = F)
+  lines(snow_acc_plot[i, ], col = alpha(col_accu_basin, alpha = 1.0), lwd = 1.8)
+  polygon(x = c(0.99, 1:length(snow_acc_plot[i, ]), length(snow_acc_plot[i, ])+0.01),
+          y = c(0, snow_acc_plot[i, ], 0), col = alpha(col_accu_basin, alpha = alpha_accu),
+          border = F)
+  # abline(v = c(yea_min_doy_14[i]-7, yea_min_doy_14[i]+7) , col= "black")
+  abline(h = 0)
+  axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+       col = "black", col.axis = "black", tck = -0.04)#plot ticks
+  axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+       col="black", col.axis="black", mgp=c(3, 0.06, 0), cex.axis = 1.2)#plot labels
+  axis(4, at = snow_labs, labels = snow_labs, mgp=c(3, 0.08, 0), tck = -0.005, cex.axis = 1.2)
+  mtext("SWE [hm³/14d]", side = 4, line = 1.2, adj = 0.5, cex = 0.85)
+  mtext(paste0(head_ind, "1) Rainfall, snow and discharge"), side = 3, line = 0.04, adj = 0.0, cex = 1.1)
+  mtext(paste0(my_years[i], "/", my_years[i+1]), side = 3, line = 0.02, adj = 1.0, cex = 1.0)
+  if(do_labs){
+    text(140, -1290, "Melt", cex = 1.2)
+    text(60, 2650, "Accumulation", cex = 1.2)
+  }
+  
+  box()
+  
+  par(new = T)
+  
+  #Discharge Basel
+  grdc_max <- which(disc_data_plot[i, ] == max_na(disc_data_plot[i, ]))
+  plot(disc_data_plot[i, ], type = "n", axes = F, lwd = 2, yaxs = "i",
+       ylim = c(25, max_na(disc_data_plot[i, ])*4))
+  lines(disc_data_plot[i, ], col = col_dis, lwd = 1.8)
+  polygon(x = c(0.99, 1:length(disc_data_plot[i, ]), length(disc_data_plot[i, ])+0.01),
+          y = c(0, disc_data_plot[i, ], 0), col = alpha(col_dis, alpha = alpha_disc),
+          border = F)
+  points(grdc_max, disc_data_plot[i, grdc_max], cex = 2, pch = 21, col = "black", bg = NULL)
+  axis(2, at = disc_labs, labels = disc_labs, mgp=c(3, 0.15, 0), tck = -0.005, cex.axis = 1.1)
+  mtext("D [hm³/1d]", side = 2, line = 1.4, adj = 0.0, cex = 0.85)
+  par(new = T)
+  
+  #Rainfall High Rhine
+  plot(rain_data_plot[i, ], type = "h", ylim = c(max_na(rain_data_plot[i, ])*4, 0), col = col_rain,
+       axes = F, yaxs = "i", lend =2, lwd = 0.9)
+  axis(2, at = rain_labs, labels = rain_labs, mgp=c(3, 0.15, 0), tck = -0.005, cex.axis = 1.1)
+  mtext("R [hm³/3d]", side = 2, line = 1.4, adj = 1.0, cex = 0.85)
+  
+  
+  
+  #Snow volume basin
+  par(mar = c(1.3, 2.8, 1.3, 2.8))
+  
+  doy_min <- which(data_day_mel_14[i, ] == min_na(data_day_mel_14[i, ])) - 7
+  doy_max <- which(data_day_mel_14[i, ] == min_na(data_day_mel_14[i, ])) + 7
+  
+  snow_mel_plot[i, is.na(snow_mel_plot[i, ])] <- 0
+  
+  plot(snow_mel_plot[i, ], type = "n", axes = F, lwd = 2, yaxs = "i",
+       ylim = c(min_na(snow_mel_plot[i, ])*1.2, 0))
+  lines(snow_mel_plot[i, ], col = alpha(col_melt_basin, alpha = 0.9), lwd = 1.8)
+  polygon(x = c(0.99, 1:length(snow_mel_plot[i, ]), length(snow_mel_plot[i, ])+0.01), y = c(0, snow_mel_plot[i, ], 0),
+          col = alpha(col_melt_basin, alpha = alpha_melt), border = F)
+  # abline(v = c(doy_min, doy_max), col= "orange3", lty = "solid")
+  # abline(v = x_axis_tic, col = "black", lty = "dotted", lwd = 0.8)
+  axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+       col = "black", col.axis = "black", tck = -0.06)#plot ticks
+  axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+       col="black", col.axis="black", mgp=c(3, 0.06, 0), cex.axis = 1.2)#plot labels
+  axis(2, mgp=c(3, 0.05, 0), tck = -0.02, cex.axis = 1.1)
+  mtext("SWE [hm³/14d]", side = 2, line = 1.2, cex = 0.85, adj = 0.5)
+  # mtext(paste0(my_years[i], "/",my_years[i+1]), side = 3, line = 0.02, adj = 1.0, cex = 1.0)
+  mtext(paste0(head_ind, "2) Basin melt  and elevation band timing"), side = 3, line = 0.04, adj = 0.0, cex = 1.1)
+  box()
+  
+  
+  #Plot:DOY melt min bands
+  par(new = T)
+  par(mar = c(1.3, 2.8, 1.3, 2.8))
+  
+  cex_mags <- (abs(yea_min_mag_14_all[i, ]) / max_na(abs(yea_min_mag_14_all[i, ]))) * 2.5
+  # elevs_ins <- my_elev_bands[which(yea_min_doy_14_all[i, ] > doy_min & yea_min_doy_14_all[i, ] < doy_max)]
+  
+  plot(yea_min_doy_14_all[i, ], my_elev_bands[-length(my_elev_bands)], type = "p", pch = 19, cex = cex_mags,
+       col = alpha("black", alpha = 0.6), xlim = c(0,365), axes = F)
+  # abline(v = c(doy_min, doy_max), col= "red3", lty = "solid")
+  # abline(v = x_axis_tic, col = "black", lty = "dotted", lwd = 0.8)
+  # abline(h = c(1000, 2000, 3000), col = "grey55", lty = "dotted")
+  # abline(h = range(elevs_ins), col= "red3")
+  # axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+  #      col = "black", col.axis = "black", tck = -0.04)#plot ticks
+  # axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+  #      col="black", col.axis="black", mgp=c(3, 0.20, 0), cex.axis = 0.9)#plot labels
+  axis(4, mgp=c(3, 0.03, 0), tck = -0.02, cex.axis = 1.1)
+  # mtext(paste0(my_years[i], "/",my_years[i+1]), side = 3, line = 0.02, adj = 1.0, cex = 1.0)
+  # mtext("2. Timing max. melt", side = 3, line = 0.02, adj = 0.5, cex = 1.0)
+  mtext("Elevation [m]", side = 4, line = 1.3, cex = 0.85, adj = 0.5)
+  box()
+  
+  #Snow stations
+  
+  sel_sno_dat <- function(statID, index_year){
+    
+    snow_stat <- snow_all[, which(colnames(snow_all) == statID)]
+    
+    data_day_sno <- ord_day(data_in = snow_stat,
+                            date = snow_stat_date,
+                            start_y = 1954,
+                            end_y = 2014,
+                            break_day = 274,
+                            do_ma = F,
+                            window_width = 30)
+    
+    sno_sel <- data_day_sno[index_year, ]
+    
+    return(sno_sel)
+    
+  }
+  
+  snow_wfj <- sel_sno_dat("WFJ", i)
+  snow_aro <- sel_sno_dat("ARO", i)
+  snow_sia <- sel_sno_dat("SIA", i)
+  snow_dav <- sel_sno_dat("DAV", i)
+  snow_gtt <- sel_sno_dat("GTT", i)
+  snow_elm <- sel_sno_dat("ELM", i)
+  snow_ein <- sel_sno_dat("EIN", i)
+  snow_sma <- sel_sno_dat("SMA", i)
+  
+  #One month NA summer 2011 in WFJ
+  #put to NA for polygon drawing
+  snow_wfj[is.na(snow_wfj)] <- 0
+  
+  ssmo <- 7
+  
+  x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+  x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+  
+  par(mar = c(1.3, 2.8, 1.3, 2.8))
+  
+  # col_a <- viridis(100)[1]; col_a <- viridis(100)[18]
+  # col_b <- viridis(100)[22]; col_b <- viridis(100)[35]
+  # col_c <- viridis(100)[59]; col_c <- "grey50"
+  # col_d <- viridis(100)[82]; col_d <- "darkgoldenrod4"
+  # col_e <- viridis(100)[100]; col_e <- "darkred"
+  
+  col_a <- viridis(100)[1]; col_a <-  viridis(100)[27]
+  col_b <- viridis(100)[22]; col_b <- viridis(100)[35]
+  col_c <- viridis(100)[59]; col_c <- viridis(100)[45]
+  col_d <- viridis(100)[82]; col_d <- "grey40"
+  col_e <- viridis(100)[100]; col_e <- "gold3"
+  
+  plot(snow_wfj, type = "n", axes = F, ylab = "", xlab = "")
+  lines(smoothFFT(snow_wfj, sd = ssmo), col = col_a, lwd = lwd_lines)
+  lines(smoothFFT(snow_aro, sd = ssmo), col = alpha(col_b, alpha = 1.0), lwd = lwd_lines)
+  # lines(smoothFFT(snow_sia, sd = ssmo), col = alpha("blue3", alpha = 0.7), lwd = lwd_lines)
+  lines(smoothFFT(snow_dav, sd = ssmo), col = alpha(col_c, alpha = 1.0), lwd = lwd_lines)
+  # lines(smoothFFT(snow_gtt, sd = ssmo), col = alpha("black", alpha = 0.7), lwd = lwd_lines)
+  # lines(smoothFFT(snow_elm, sd = ssmo), col = alpha("black", alpha = 0.7), lwd = lwd_lines)
+  lines(smoothFFT(snow_ein, sd = ssmo), col = alpha(col_d, alpha = 1.0), lwd = lwd_lines)
+  lines(smoothFFT(snow_sma, sd = ssmo), col = alpha(col_e, alpha = 1.0), lwd = lwd_lines)
+  polygon(x = c(1:365, 365:1) , y = c(smoothFFT(snow_wfj, sd = ssmo), rev(smoothFFT(snow_aro, sd = ssmo))),
+          col = alpha(col_a, alpha = 0.7), border = F)
+  polygon(x = c(1:365, 365:1) , y = c(smoothFFT(snow_aro, sd = ssmo), rev(smoothFFT(snow_dav, sd = ssmo))),
+          col = alpha(col_b, alpha = 0.8), border = F)
+  polygon(x = c(1:365, 365:1) , y = c(smoothFFT(snow_dav, sd = ssmo), rev(smoothFFT(snow_ein, sd = ssmo))),
+          col = alpha(col_c, alpha = 0.8), border = F)
+  polygon(x = c(1:365, 365:1) , y = c(smoothFFT(snow_ein, sd = ssmo), rev(smoothFFT(snow_sma, sd = ssmo))),
+          col = alpha(col_d, alpha = 0.7), border = F)
+  polygon(x = c(1:365) , y = c(smoothFFT(snow_sma, sd = ssmo)),
+          col = alpha(col_e, alpha = 1.0), border = F)
+  # abline(v = x_axis_tic, col = "black", lty = "dotted", lwd = 0.8)
+  axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+       col = "black", col.axis = "black", tck = -0.06)#plot ticks
+  axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+       col="black", col.axis="black", mgp=c(3, 0.06, 0), cex.axis = 1.2)#plot labels
+  axis(2, mgp=c(3, 0.05, 0), tck = -0.02, cex.axis = 1.2)
+  mtext("Snow [cm]", side = 2, line = 1.2, cex = 0.85, adj = 0.5)
+  mtext(paste0(head_ind, "3) Snow observations"), side = 3, line = 0.04, adj = 0.0, cex = 1.1)
+  legend("topright", c("WFJ", "ARO", "DAV", "EIN", "SMA"), col = c(col_a, col_b, col_c, col_d, col_e),
+         pch = 19, cex = 0.85, bg = "white")
+  box()
+  
+  
+}
+
+layout(matrix(c(1, 1, 13, 4, 4, 14, 7, 7, 15, 10, 10,
+                2, 3, 13, 5, 6, 14, 8, 9, 15, 11, 12),
+              11, 2), widths=c(), heights=c(1, 1, 0.35, 1, 1, 0.35, 1, 1, 0.35, 1, 1, 0.35, 1, 1))
+
+# melt_plot(i = 13, head_ind = "a", do_labs = T)
+
+melt_plot(i = 16, head_ind = "a", do_labs = T)
+
+melt_plot(i = 25, head_ind = "b")
+
+melt_plot(i = 27, head_ind = "c")
+
+melt_plot(i = 34, head_ind = "d")
+
+dev.off()
+
+
+
+
+#scd_maps----
+
+# stopCluster(clust_exp)
+
+n_cores <- 10 #number of cores used for parallel computing
+
+#Make cluster for parallel computing
+clust_exp <- makeCluster(n_cores)
+clusterEvalQ(clust_exp, pacman::p_load(alptempr, meltimr))
+registerDoParallel(clust_exp)
+
+val2col <- function(val_in, dat_ref, do_log = F, do_bicol = T, col_na = "white"){
+  
+  if(do_log){
+    
+    val_in <- log(val_in)
+    dat_ref <- log(dat_ref)
+    
+  }
+  
+  if(is.na(val_in)){#set NAs to mean to keep script running; later back to NA
+    val_in <- mea_na(dat_ref)
+    set2NA_1 <- T
+  }else{
+    set2NA_1 <- F
+  }
+  
+  if(do_bicol){
+    
+    col_ind <- round((abs(val_in) / max_na(abs(dat_ref))) * 100)
+    
+    if(val_in < 0){
+      my_col  <- colorRampPalette(c("grey80", "lemonchiffon2", "lightgoldenrod2", "gold3", "goldenrod3", "orangered4", "darkred"))(100)
+    }else{
+      my_col  <- colorRampPalette(c("grey80", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
+    }
+    
+  }else{
+    col_ind <- round((val_in-min_na(dat_ref)) / (max_na(dat_ref)-min_na(dat_ref)) * 200)  
+    my_col <- c(colorRampPalette(c(viridis::viridis(20, direction = -1)))(200))
+  }
+  
+  
+  if(is.na(col_ind)){
+    set2NA_2 <- T
+    col_ind <- 1 #set to one to keep script running; later set to NA color
+  }else{
+    set2NA_2 = F
+  }
+  
+  if(col_ind == 0){#for minimum and very small values
+    
+    col_ind <- 1
+    
+  }
+  
+  col_out <- my_col[col_ind]
+  
+  if(length(col_out) < 1){
+    
+    col_out <- col_na
+    
+  }
+  
+  if(set2NA_1 | set2NA_2){
+    
+    col_out <- col_na
+    
+  }
+  
+  return(col_out)
+  
+}
+
+#Values to colors simulation
+sc_doy_simu_ann <- sc_doy_simu / round(length(date_vali) / 365)
+cols_spat_sim <- foreach(i = 1:length(sc_doy_simu_ann), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = sc_doy_simu_ann[i],
+          dat_ref = sc_doy_simu_ann,
+          do_bicol = F)
+  
+}
+
+#Values to colors difference
+scd_dif <- (sc_doy_simu - scd_eurac) / round(length(date_vali) / 365) #Calculate difference Obs. and Sim.
+cols_spat_dif <- foreach(i = 1:length(scd_dif), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = scd_dif[i], 
+          dat_ref = scd_dif,
+          do_log = F,
+          do_bicol = T)
+  
+}
+
+#Values to colors observations
+scd_eurac_ann <- scd_eurac / round(length(date_vali) / 365)
+cols_spat_eur <- foreach(i = 1:length(scd_eurac_ann), .combine = 'cbind') %dopar% {
+  
+  val2col(val_in = scd_eurac_ann[i],
+          dat_ref = scd_eurac_ann,
+          do_bicol = F)
+  
+}
+
+
+pdf(paste0(base_dir,"R/figs_exp/scd_maps.pdf"), width = 16, height = 3.2)
+# tiff(paste0(base_dir,"R/figs_exp/scd_maps.tiff"), width = 16, height = 3.5,
+#      units = "in", res = 800)
+
+#Plot maps
+layout(matrix(c(rep(1, 7), 2, rep(3, 7), 4, rep(5, 7), 6),
+              1, 24, byrow = T), widths=c(), heights=c())
+# layout.show(n = 7)
+
+par(family = "serif")
+cex_pch <- 0.27
+
+#Map Simulations
+par(mar = c(0.5, 0.5, 1.0, 0.5))
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 15, col = cols_spat_sim, cex = cex_pch)
+plot(basin_base, add =T, lwd = 1.5)
+mtext("a) Snow simulations", side = 3, line = -1.0, cex = 1.7)
+
+par(mar = c(2.0, 0.2, 5.0, 2.9))
+my_col <- c(colorRampPalette(c(viridis::viridis(20, direction = -1)))(200))
+my_bre <- seq(0, max_na(abs(sc_doy_simu_ann)), length.out = length(my_col)+1)
+alptempr::image_scale(as.matrix(sc_doy_simu), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.50, 0), tck = -0.1, cex.axis = 1.6)
+mtext("[day]", side = 3, line = 0.7, cex = 1.2)
+box()
+
+#Map Difference
+par(mar = c(0.5, 0.5, 1.0, 0.5))
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 15, col = cols_spat_dif, cex = cex_pch)
+plot(basin_base, add = T, lwd = 1.5)
+mtext("b) Simulations - MODIS", side = 3, line = -1.0, cex = 1.7)
+
+par(mar = c(2.0, 0.2, 5.0, 2.9))
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "goldenrod3", "gold3", "lightgoldenrod2", "lemonchiffon2", "grey80"))(100)
+cols_max <- colorRampPalette(c("grey80", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
+my_col <- colorRampPalette(c(cols_min, cols_max))(200)
+my_bre <- seq(-max_na(abs(scd_dif)), max_na(abs(scd_dif)), length.out = length(my_col)+1)
+alptempr::image_scale(as.matrix(scd_dif), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.50, 0), tck = -0.1, cex.axis = 1.6)
+mtext("[day]", side = 3, line = 0.7, cex = 1.2)
+box()
+
+#Map EURAC
+par(mar = c(0.5, 0.5, 1.0, 0.5))
+plot(basin_base)
+points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 15, col = cols_spat_eur, cex = cex_pch)
+plot(basin_base, add =T, lwd = 1.5)
+mtext("c) MODIS snow cover", side = 3, line = -1.0, cex = 1.7)
+
+par(mar = c(2.0, 0.2, 5.0, 2.9))
+my_col <- c(colorRampPalette(c(viridis::viridis(20, direction = -1)))(200))
+my_bre <- seq(0, max_na(abs(scd_eurac_ann)), length.out = length(my_col)+1)
+alptempr::image_scale(as.matrix(scd_eurac_ann), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.50, 0), tck = -0.1, cex.axis = 1.6)
+mtext("[day]", side = 3, line = 0.7, cex = 1.2)
+box()
+
+# #Header above maps
+# par(mar = c(0.2, 0.2, 0.2, 0.2))
+# plot(1:100, 1:100, type = "n", axes = F, ylab = "", xlab = "")
+# mtext("Average annual total days with snow cover  for the time frame 08/2002 to 07/2012", 
+#       side = 3, line = -1.8, cex = 1.4)
+
+dev.off()
+
+
+
+#melt_boxes----
+
+#Calculate Timing and Magnitude
+yea_min_mag_bands_14 <- NULL
+yea_min_doy_bands_14 <- NULL
+
+for(i in 1:ncol(svolu_d_band)){
+  
+  swe_band <- svolu_d_band[, i]
+  
+  swe_band_dif <- c(NA, diff(swe_band))
+  
+  swe_band_dif[which(swe_band_dif > 0)] <- 0
+  
+  #Moving average filter
+  swe_band_dif_ma_14 <- rollapply(data = swe_band_dif, width = 14,
+                                  FUN = sum_na, align = "center", fill = NA)
+  
+  #Order data by day
+  data_day_14 <- ord_day(data_in = swe_band_dif_ma_14,
+                         date = date_snow,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274,
+                         do_ma = F,
+                         window_width = 30)
+  
+  min_doy <- function(data_in){
+    
+    doy_min <- as.numeric(which(data_in == min_na(data_in)))
+    
+    if(length(doy_min) > 1){
+      doy_min <- mea_na(doy_min)
+    }
+    
+    return(doy_min)
+  }
+  
+  yea_min_mag_14 <- apply(data_day_14, 1, min_na)
+  yea_min_doy_14 <- apply(data_day_14, 1, min_doy)
+  
+  yea_min_mag_bands_14 <- cbind(yea_min_mag_bands_14, yea_min_mag_14)
+  yea_min_doy_bands_14 <- cbind(yea_min_doy_bands_14, yea_min_doy_14)
+  
+}
+
+yea_min_doy_1 <- apply(yea_min_doy_bands_14[1:30, ], 2, mea_na)
+yea_min_doy_2 <- apply(yea_min_doy_bands_14[31:60, ], 2, mea_na)
+yea_min_mag_1 <- apply(yea_min_mag_bands_14[1:30, ], 2, mea_na) * -1
+yea_min_mag_2 <- apply(yea_min_mag_bands_14[31:60, ], 2, mea_na) * -1
+
+doy_mea <- round(apply(yea_min_doy_bands_14, 2, mea_na))
+doy_mea_1 <- yea_min_doy_1
+doy_mea_2 <- yea_min_doy_2
+range_doy_mea <- range(doy_mea)
+
+#Calculate melt elevation
+melt_elevs_ts <- NULL
+for(d in range_doy_mea[1]:range_doy_mea[2]){
+  
+  time_melt <- (d-14):(d+15)
+  elev_collector <- NULL
+  
+  for(i in 1:nrow(yea_min_doy_bands_14)){
+    
+    elev_collector <- c(elev_collector, mea_na(my_elev_bands[which(yea_min_doy_bands_14[i, ] %in% time_melt)]))
+    
+  }
+  
+  melt_elevs_ts <- cbind(melt_elevs_ts, elev_collector)
+  
+}
+
+melt_elevs_1 <- apply(melt_elevs_ts[1:30,], 2, mea_na)
+melt_elevs_2 <- apply(melt_elevs_ts[31:60,], 2, mea_na)
+
+
+#Plot Boxplots
+
+pdf(paste0(base_dir,"R/figs_exp/melt_boxes_raw.pdf"), width = 12, height = 3)
+
+par(mfrow = c(1, 3))
+par(mar = c(0.3, 7, 1.0, 12))
+par(family = "serif")
+box_col <- "grey85"
+
+doy_ranges <- range(doy_mea_2-doy_mea_1)
+boxplot(doy_mea_2-doy_mea_1, col = box_col, axes = F, lwd = 1.8, outpch = 19,
+        ylim = c(doy_ranges[2:1]), whisklty = "solid", medlwd = 2.5, medcol = "black")
+axis(2, mgp=c(3, 0.25, 0), tck = -0.011, cex.axis = 1.6)
+mtext("Timing change [day]", side = 2, line = 2.7, cex = 1.4)
+box()
+
+boxplot((yea_min_mag_2 - yea_min_mag_1)/1000000, col = box_col, axes = F, lwd = 1.8,
+        ylim = range((yea_min_mag_2 - yea_min_mag_1)/1000000)[c(2,1)], 
+        whisklty = "solid", medlwd = 2.5, medcol = "black", outpch = 19)
+axis(2, mgp=c(3, 0.25, 0), tck = -0.011, cex.axis = 1.6)
+mtext("Magnitude change [hm³]", side = 2, line = 2.7, cex = 1.4)
+box()
+
+boxplot(melt_elevs_2-melt_elevs_1, col = box_col, axes = F, lwd = 1.8,
+        whisklty = "solid", medlwd = 2.5, medcol = "black", outpch = 19)
+axis(2, mgp=c(3, 0.25, 0), tck = -0.011, cex.axis = 1.6)
+mtext("Elevation change [m]", side = 2, line = 2.7, cex = 1.4)
+box()
+
+dev.off()
+
+
+
+#Raster graph: Elevation band
+
+# pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/raster_elev_band.pdf", width = 6, height = 3)
+tiff(paste0(base_dir,"R/figs_exp/raster_elev_band.tiff"), width = 6, height = 3,
+     units = "in", res = 800)
+
+band_sel <- 31 #my_elev_bands[31]
+
+snow_band <- svolu_d_band[, band_sel]/ 1000000 # [hm³]
+
+data_day <- ord_day(data_in = snow_band,
+                    date = date_snow,
+                    start_y = 1954,
+                    end_y = 2014,
+                    break_day = 274)
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+# cols_hydro <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
+cols_hydro <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
+
+breaks_hydro <- seq(alptempr::min_na(data_day), alptempr::max_na(data_day), length.out = length(cols_hydro)+1)
+
+layout(matrix(c(rep(1, 8), 2),
+              1, 9), widths=c(), heights=c())
+
+par(mar = c(1.5, 3.5, 2.5, 0.2))
+par(family = "serif")
+
+image(x = 1:ncol(data_day),
+      y = 1954:2013,
+      z = t(data_day),
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.05)#plot ticks
+axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.50, 0), cex.axis = 1.7)#plot labels
+axis(2, mgp=c(3, 0.12, 0), tck = -0.01, cex.axis = 1.5)
+abline(h = 1983.5, col = "black", lwd = 2)
+# mtext("Year", side = 2, line = 2.1, cex = 1.2)
+mtext("a) SWE volume elevation band", side = 3, line = 0.3, cex = 1.4, adj = 0.0)
+mtext("[hm³]", side = 3, line = 0.3, cex = 1.2, adj = 1.0)
+box()
+
+par(mar = c(1.5, 0.2, 2.5, 2.2))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.40, 0), tck = -0.10, cex.axis = 1.3)
+box()
+
+dev.off()
+
+
+
+
+
+
+
+#band_asso----
+
+#Bands calculate
+yea_min_mag_bands_14 <- NULL
+yea_min_doy_bands_14 <- NULL
+
+for(i in 1:ncol(svolu_d_band)){
+  
+  swe_band <- svolu_d_band[, i]
+  
+  swe_band_dif <- c(NA, diff(swe_band))
+  
+  swe_band_dif[which(swe_band_dif > 0)] <- 0
+  
+  #Moving average filter
+  swe_band_dif_ma_14 <- rollapply(data = swe_band_dif, width = 14,
+                                  FUN = sum_na, align = "center", fill = NA)
+  
+  #Order data by day
+  data_day_14 <- ord_day(data_in = swe_band_dif_ma_14,
+                         date = date_snow,
+                         start_y = 1954,
+                         end_y = 2014,
+                         break_day = 274,
+                         do_ma = F,
+                         window_width = 30)
+  
+  min_doy <- function(data_in){
+    
+    doy_min <- as.numeric(which(data_in == min_na(data_in)))
+    
+    if(length(doy_min) > 1){
+      doy_min <- mea_na(doy_min)
+    }
+    
+    return(doy_min)
+  }
+  
+  yea_min_mag_14 <- apply(data_day_14, 1, min_na)
+  yea_min_doy_14 <- apply(data_day_14, 1, min_doy)
+  
+  yea_min_mag_bands_14 <- cbind(yea_min_mag_bands_14, yea_min_mag_14)
+  yea_min_doy_bands_14 <- cbind(yea_min_doy_bands_14, yea_min_doy_14)
+  
+}
+
+bands_doy_mea <- apply(yea_min_doy_bands_14, 2, mea_na)
+bands_doy_slo <- apply(yea_min_doy_bands_14, 2, sens_slo)*-1
+bands_doy_mea_1 <- apply(yea_min_doy_bands_14[1:30,], 2, med_na)
+bands_doy_mea_2 <- apply(yea_min_doy_bands_14[31:60,], 2, med_na)
+
+freq_bands_1 <- NULL
+freq_bands_2 <- NULL
+freq_diff_all <- NULL
+length_bands_1 <- NULL
+length_bands_2 <- NULL
+width_over <- 14
+
+for(b in 1:ncol(svolu_d_band)){
+  
+  band_sel <- b
+  
+  bands_frequ_1 <- NULL
+  band_lengt_1 <- NULL
+  for(y in 1:30){
+    
+    mid_day <- yea_min_doy_bands_14[y, band_sel]
+    min_day <- mid_day - width_over
+    max_day <- mid_day + width_over
+    melt_window <- min_day:max_day
+    
+    bands_asso_1 <- which(yea_min_doy_bands_14[y, ] > min_day & yea_min_doy_bands_14[y, ] < max_day)
+    
+    bands_frequ_1 <- c(bands_frequ_1, bands_asso_1)
+    band_lengt_1 <- c(band_lengt_1, length(bands_asso_1))
+    
+  }
+  hist_1 <- hist(bands_frequ_1, breaks = seq(from = 0.5, to = ncol(svolu_d_band)+0.5, by = 1), plot = F)
+  
+  bands_frequ_2 <- NULL
+  band_lengt_2 <- NULL
+  for(x in 31:60){
+    
+    # print(y)
+    mid_day <- yea_min_doy_bands_14[x, band_sel]
+    min_day <- mid_day - width_over
+    max_day <- mid_day + width_over
+    melt_window <- min_day:max_day
+    
+    bands_asso_2 <- which(yea_min_doy_bands_14[x, ] > min_day & yea_min_doy_bands_14[x, ] < max_day)
+    
+    bands_frequ_2 <- c(bands_frequ_2, bands_asso_2)
+    band_lengt_2 <- c(band_lengt_2, length(bands_asso_2))
+    
+  }
+  hist_2 <- hist(bands_frequ_2, breaks = seq(from = 0.5, to = ncol(svolu_d_band)+0.5, by = 1), plot = F)
+  
+  freq_diff <- hist_2$counts - hist_1$counts
+  
+  freq_bands_1 <- cbind(freq_bands_1, hist_1$counts)
+  freq_bands_2 <- cbind(freq_bands_2, hist_2$counts)
+  freq_diff_all <- cbind(freq_diff_all, freq_diff)
+  length_bands_1 <- cbind(length_bands_1, band_lengt_1)
+  length_bands_2 <- cbind(length_bands_2, band_lengt_2)
+}
+
+length_bands_1_mea <- apply(length_bands_1, 2, mea_na)
+length_bands_2_mea <- apply(length_bands_2, 2, mea_na)
+
+#Plot Frequencies individual band
+pdf(paste0(base_dir,"R/figs_exp/bands_asso_1.pdf"), width = 8, height = 5)
+
+band_test <- 38 #my_elev_bands[38]
+col_1 <- viridis(9, direction = 1)[4]
+col_2 <- "darkred"
+
+par(mar = c(2.5, 2.5, 2, 0.2))
+
+plot(freq_bands_1[, band_test], type = "h", col = alpha(col_1, alpha = 0.6), lwd = 7, ylab = "", xlab = "",
+     axes = F, lend = 2, xaxs = "i", yaxs = "i", ylim = c(0, 32), xlim = c(0, 60))
+legend("topleft", c("1985-2014", "1954-1984"), col = c(col_2, col_1), pch = 19)
+par(new = T)
+plot(freq_bands_2[, band_test], type = "h", col = alpha(col_2, alpha = 0.6), lwd = 7, ylab = "", xlab = "",
+     axes = F, lend = 2, xaxs = "i", yaxs = "i", ylim = c(0, 32), xlim = c(0, 60))
+par(new = T)
+plot(band_test, freq_bands_2[band_test, band_test], type = "h", col = alpha("black", alpha = 1.0), lwd = 7, ylab = "", xlab = "",
+     axes = F, lend = 2, xaxs = "i", yaxs = "i", ylim = c(0, 32), xlim = c(0, 60))
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("Frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("a) Frequency concurrent melt (elevation band 2050-2100 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+box()
+
+dev.off()
+
+
+
+pdf(paste0(base_dir,"R/figs_exp/bands_asso_2.pdf"), width = 8, height = 5)
+
+par(mar = c(2.5, 2.5, 2.0, 0.2))
+
+plot(freq_diff_all[band_test, ], type = "n", axes = F, ylab = "", xlab = "", xaxs = "i", yaxs = "i",
+     xlim = c(0, 60), ylim = c(-12.9, 9))
+abline(v = band_test, col = "black", lwd = 1.5)
+lines(freq_diff_all[band_test, ], lwd = 2, col = "grey35")
+polygon(x = c(0.999, 1:58, 58.0001) , y = c(0, freq_diff_all[band_test, ], 0), col = alpha("grey55", alpha = 0.7), border = F)
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
+# abline(h = 0, lty = "dashed")
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("Change frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
+mtext("b) Changes in concurrent melt (elevation band 2050-2100 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+box()
+
+dev.off()
+
+
+pdf(paste0(base_dir,"R/figs_exp/bands_asso_3.pdf"), width = 8, height = 5)
+
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "grey90"))(50)
+cols_max <- colorRampPalette(c("grey90", "gold3",  "orange3", "orangered4", "orangered4", "darkred"))(50)
+cols_mel <- c(cols_min, cols_max)
+
+layout(matrix(c(rep(1, 9), 2),
+              1, 10), widths=c(), heights=c())
+
+par(mar = c(3.5, 3.5, 2.5, 0.2))
+
+image(x = 1:nrow(freq_diff_all),
+      y = 1:ncol(freq_diff_all),
+      z = freq_diff_all,
+      col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), axes = F, ylab = "", xlab = "")
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.55, 0), tck = -0.005, cex.axis = 1.4)
+axis(2, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("Elevation band [m]", side = 2, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("c) Changes in concurrent melt (all elevation bands)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("[-]", side = 3, adj = 1.0, line = 0.2, cex = 1.1)
+box()
+
+par(mar = c(3.5, 0.2, 2.5, 2.0))
+
+alptempr::image_scale(as.matrix(freq_diff_all), col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+# mtext(lab_unit, side = 3, line = 0.3, cex = 1)
+box()
+
+dev.off()
+
+
+
+
+
+#wtc_change----
+
+
+#Calculate changes in frequencies of weather types
+
+gwt26_data <- read.table("U:/rhine_snow/data/idaweb/order75953/order_75953_data.txt",
+                         sep = ";", skip = 1, header = TRUE, na.strings = "-")
+
+gwt26_data$time <- as.POSIXct(strptime(gwt26_data$time, "%Y%m%d", tz="UTC"))
+
+start_year <- 1959; start_day <- "1959-01-01"
+end_year <- 2018; end_day   <- "2018-12-31"
+
+start_date <- as.POSIXct(strptime(start_day, "%Y-%m-%d", tz="UTC"))
+end_date   <- as.POSIXct(strptime(end_day,   "%Y-%m-%d", tz="UTC"))
+full_date  <- seq(start_date, end_date, by="day")
+
+data_gwt26 <- data.frame(date = full_date,
+                         value = with(gwt26_data, gwt26_data$wkwtg3d0[match(full_date, time)]))
+
+gwt_low_tem0 <- c(1:8, 25)
+gwt_high_tem0 <- c(9:16, 26)
+window_width <- 30
+cover_thres <- 0.50
+
+sens_slope <- function(data_in, cover_thresh = 0.9){
+  
+  if(length(which(is.na(data_in))) / length(data_in) > (1-cover_thresh)){
+    sens_slo <-  NA
+  }else{
+    time_step <- 1:length(data_in)
+    sens_slo <- as.numeric(zyp.sen(data_in~time_step)$coefficients[2])
+    #sens_slo <- as.numeric(zyp.trend.vector(data_in, method = "zhang", conf.intervals = F)[2])
+  }
+  return(sens_slo)
+}
+
+moving_analys_wt <- function (dates, values, start_year, end_year, window_width,
+                              cover_thresh, method_analys, weather_type = 1) {
+  
+  f_weatherYN <- function(data_in, gwts = weather_type) {
+    if (data_in %in% gwts) {
+      data_in <- 1
+    }
+    else {
+      data_in <- 0
+    }
+    return(data_in)
+  }
+  
+  valuesYN <- sapply(values, f_weatherYN)
+  valuesYN_mw <- rollapply(data = valuesYN,
+                           width = window_width, FUN = mea_na, align = "center",
+                           fill = NA)
+  
+  data_day <- ord_day(data_in = valuesYN_mw,
+                      date = dates,
+                      start_y = start_year,
+                      end_y = end_year,
+                      break_day = 274,
+                      do_ma = F,
+                      window_width = 30)
+  
+  f_sens_slope <- function(data_in) {
+    sens_slope(data_in = data_in, cover_thresh = cover_thresh)
+  }
+  
+  mov_res <- apply(data_day[, -1], 2, f_sens_slope)
+  
+  for (i in 1:365) {
+    if ((length(which(is.na(data_day[, i])))/nrow(data_day)) < (1 - cover_thresh)) {
+      if (length(which(data_day[, i] == 1)) >= ((nrow(data_day) - 2) - length(which(is.na(data_day[, i]))))) {
+        mov_res[i] <- 0
+      }
+      if (length(which(data_day[, i] == 0)) >=  ((nrow(data_day) - 2) - length(which(is.na(data_day[, i]))))) {
+        mov_res[i] <- 0
+      }
+    }
+  }
+  
+  return(mov_res)
+}
+
+gwt_tem0_high <- moving_analys_wt(dates = data_gwt26$date, values = data_gwt26$value, start_year = start_year,
+                                  end_year = end_year, window_width = window_width,
+                                  cover_thresh= cover_thres, method_analys = "weather_type_window_likeli_sens_slope",
+                                  weather_type = gwt_high_tem0)*100*10# [%/dec]
+
+gwt_tem0_low  <- moving_analys_wt(dates = data_gwt26$date, values = data_gwt26$value, start_year = start_year,
+                                  end_year = end_year, window_width = window_width,
+                                  cover_thresh= cover_thres, method_analys = "weather_type_window_likeli_sens_slope",
+                                  weather_type = gwt_low_tem0)*100*10 # [%/dec]
+
+
+#Calculate melt elevation changes
+
+#Calculate melt elevation
+melt_elevs_ts <- NULL
+for(d in range_doy_mea[1]:range_doy_mea[2]){
+  
+  time_melt <- (d-14):(d+15)
+  elev_collector <- NULL
+
+  for(i in 1:nrow(yea_min_doy_bands_14)){
+    
+    elev_collector <- c(elev_collector, mea_na(my_elev_bands[which(yea_min_doy_bands_14[i, ] %in% time_melt)]))
+
+  }
+  
+  melt_elevs_ts <- cbind(melt_elevs_ts, elev_collector)
+  
+}
+
+melt_elevs_1 <- apply(melt_elevs_ts[1:30,], 2, mea_na)
+melt_elevs_2 <- apply(melt_elevs_ts[31:60,], 2, mea_na)
+
+
+#Plot: Weather types, temperature and elevation shift
+
+pdf(paste0(base_dir, "R/figs_exp/temp_wt_elev.pdf"), width = 8, height = 4.5)
+
+par(mfrow = c(2, 1))
+par(family = "serif")
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+days_sel <- 1:364
+
+par(mar = c(2.0, 3.0, 2.0, 3.0))
+
+plot(x = 1:364, y = tslo_band[days_sel, 28], type = "n", axes = F, ylim = range(tslo_band), ylab = "", xlab = "")
+for(i in 1:ncol(tslo_band)){
+  lines(x = days_sel, y = tslo_band[days_sel, i], col = alpha("black", alpha = 0.2))
+}
+abline(h = 0, lty = "dashed", col = "grey55", lwd = 1)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.0)
+abline(v = x_axis_tic, lty = "dashed", col = "grey55", lwd = 1)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.05, 0), cex.axis = 1.0)#plot labels
+mtext("a) Temperature trends and changes in melt elevation", side = 3, cex = 1.2, line = 0.3, adj = 0)
+mtext("Temp. [°C/dec]", side = 2, cex = 1.0, line = 1.5)
+
+par(new = T)
+
+col_elev <- "darkblue"
+ele_range <- c(-max_na(abs(melt_elevs_2 - melt_elevs_1)), max_na(abs(melt_elevs_2 - melt_elevs_1)))
+plot(range_doy_mea[1]:range_doy_mea[2], melt_elevs_2 - melt_elevs_1, type = "l", axes = F, lwd = 2,
+     xlim = c(1,365), ylim = ele_range, col = alpha(col_elev, alpha = 0.7), ylab = "", xlab = "")
+points(range_doy_mea[1]:range_doy_mea[2], melt_elevs_2 - melt_elevs_1, pch = 19, cex = 0.3, 
+       col = alpha(col_elev, alpha = 0.7))
+axis(4, mgp=c(3, 0.15, 0), tck = -0.03, cex.axis = 1.0, col = col_elev, col.axis = col_elev)
+mtext("Elev. change [m]", side = 4, cex = 1.0, line = 1.4, col = col_elev)
+box()
+
+
+#Plot: WTC frequencies
+col_1 <- "steelblue4"
+col_2 <- "darkred"
+
+days_sel <- 1:365
+plot(gwt_tem0_high[days_sel], type = "l", col = col_2, ylim = c(range(c(gwt_tem0_high-gwt_tem0_low))), 
+     axes = F, lwd = 2, ylab = "", xlab = "")
+lines(gwt_tem0_low[days_sel], col = col_1, lwd = 2)
+lines(gwt_tem0_high[days_sel] - gwt_tem0_low[days_sel], lwd = 2)
+abline(h = 0, lty = "dashed", col = "grey55", lwd = 1)
+abline(v = x_axis_tic, lty = "dashed", col = "grey55", lwd = 1)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.0)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.05, 0), cex.axis = 1.0)#plot labels
+mtext("b) Changes in warm/cold weather types", side = 3, cex = 1.2, line = 0.3, adj = 0)
+mtext("Window prob. [%/dec]", side = 2, cex = 1.0, line = 1.5)
+legend("topleft", c("              ","     "), box.lwd = 0, box.col = "white",bg = "white", cex = 0.8)
+mtext("Warm GWTs", side = 3, cex = 0.75, line = -1.0, adj = 0.01, col = col_2)
+mtext("Cold GWTs", side = 3, cex = 0.75, line = -1.7, adj = 0.01, col = col_1)
+mtext("WTE index", side = 3, cex = 0.75, line = -2.4, adj = 0.01)
+box()
+
+dev.off()
+
+
+
+
+#melt_basin----
+
+pdf(paste0(base_dir,"R/figs_exp/melt_basin.pdf"), width = 16, height = 3.5)
+# tiff("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/melt_ext.tiff", width = 16, height = 10,
+#      units = "in", res = 800)
+
+
+col_melt_14 <- viridis(9, direction = 1)[4]
+col_melt_7 <- "black"
+par(family = "serif")
+
+layout(matrix(c(rep(1, 8), 2, rep(3, 9), rep(4, 9)),
+              1, 27), widths=c(), heights=c())
+
+#Raster graph SWE volume basin
+sno_vol_basin_h <- sno_vol_basin / 1000000 # [hm³]
+
+data_day <- ord_day(data_in = sno_vol_basin_h,
+                    date = date_snow,
+                    start_y = 1954,
+                    end_y = 2014,
+                    break_day = 274)
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+# cols_hydro <- c(colorRampPalette(c("white", viridis::viridis(20, direction = -1)))(200))
+cols_hydro <- colorRampPalette(c("grey95", viridis::viridis(9, direction = 1)[4:1]))(200)
+
+breaks_hydro <- seq(alptempr::min_na(data_day), alptempr::max_na(data_day), length.out = length(cols_hydro)+1)
+
+par(mar = c(1.8, 4.5, 2.5, 0.2))
+
+image(x = 1:ncol(data_day),
+      y = 1954:2013,
+      z = t(data_day),
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.04)#plot ticks
+axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.52, 0), cex.axis = 1.6)#plot labels
+axis(2, mgp=c(3, 0.25, 0), tck = -0.01, cex.axis = 1.6)
+mtext("Year", side = 2, line = 2.0, cex = 1.4)
+mtext("a) SWE volume basin", side = 3, line = 0.3, cex = 1.6, adj = 0.0)
+mtext("[hm³]", side = 3, line = 0.3, cex = 1.2, adj = 1.0)
+
+box()
+
+par(mar = c(1.5, 0.2, 2.5, 2.2))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.40, 0), tck = -0.08, cex.axis = 1.2)
+box()
+
+
+#Basin calculate
+sno_vol_basin_h <- sno_vol_basin / 1000000 # [hm³]
+
+sno_vol_basin_h_dif <- c(NA, diff(sno_vol_basin_h))
+
+sno_vol_basin_h_dif[which(sno_vol_basin_h_dif > 0)] <- 0
+
+#Moving average filter
+snow_basin_dif_ma_7 <- rollapply(data = sno_vol_basin_h_dif, width = 7,
+                                 FUN = sum_na, align = "center", fill = NA)
+snow_basin_dif_ma_14 <- rollapply(data = sno_vol_basin_h_dif, width = 14,
+                                  FUN = sum_na, align = "center", fill = NA)
+
+#Order data by day
+data_day_7 <- ord_day(data_in = snow_basin_dif_ma_7,
+                      date = date_snow,
+                      start_y = 1954,
+                      end_y = 2014,
+                      break_day = 274,
+                      do_ma = F,
+                      window_width = 30)
+
+data_day_14 <- ord_day(data_in = snow_basin_dif_ma_14,
+                       date = date_snow,
+                       start_y = 1954,
+                       end_y = 2014,
+                       break_day = 274,
+                       do_ma = F,
+                       window_width = 30)
+
+yea_min_mag_7 <- apply(data_day_7, 1, min_na)* -1 #melt positive value
+yea_min_mag_14 <- apply(data_day_14, 1, min_na)* -1 #melt positive value
+
+min_doy <- function(data_in){
+  
+  doy_min <- which(data_in == min_na(data_in))[1]
+  
+  return(doy_min)
+}
+
+yea_min_doy_7 <- apply(data_day_7, 1, min_doy)
+yea_min_doy_14 <- apply(data_day_14, 1, min_doy)
+
+slo_mag_7  <- sens_slo(yea_min_mag_7)
+int_mag_7  <- as.numeric(zyp.trend.vector(yea_min_mag_7, x = 1:length(yea_min_mag_7),
+                                          method = "zhang", conf.intervals = F)[11])
+sig_mag_7 <- as.numeric(zyp.trend.vector(yea_min_mag_7, x = 1:length(yea_min_mag_7),
+                                         method = "zhang", conf.intervals = F)[6])
+
+slo_mag_14 <- sens_slo(yea_min_mag_14)
+int_mag_14 <- as.numeric(zyp.trend.vector(yea_min_mag_14, x = 1:length(yea_min_mag_14),
+                                          method = "zhang", conf.intervals = F)[11])
+sig_mag_14 <- as.numeric(zyp.trend.vector(yea_min_mag_14, x = 1:length(yea_min_mag_14),
+                                          method = "zhang", conf.intervals = F)[6])
+
+slo_doy_7 <- sens_slo(yea_min_doy_7)
+int_doy_7 <- as.numeric(zyp.trend.vector(yea_min_doy_7, x = 1:length(yea_min_doy_7),
+                                         method = "zhang", conf.intervals = F)[11])
+sig_doy_7 <- as.numeric(zyp.trend.vector(yea_min_doy_7, x = 1:length(yea_min_doy_7),
+                                         method = "zhang", conf.intervals = F)[6])
+
+slo_doy_14 <- sens_slo(yea_min_doy_14)
+int_doy_14 <- as.numeric(zyp.trend.vector(yea_min_doy_14, x = 1:length(yea_min_doy_14),
+                                          method = "zhang", conf.intervals = F)[11])
+sig_doy_14 <- as.numeric(zyp.trend.vector(yea_min_doy_14, x = 1:length(yea_min_doy_14),
+                                          method = "zhang", conf.intervals = F)[6])
+
+
+#DOY basin
+
+par(mar = c(1.8, 5.5, 2.5, 0.2))
+
+plot(1:length(yea_min_doy_7), yea_min_doy_7, type = "n", axes = F,
+     ylab = "", xlab = "", ylim = c(90, 250))
+lines(1:length(yea_min_doy_7), yea_min_doy_7, type = "l", col = col_melt_7, lwd = 1.8)
+lines(1:length(yea_min_doy_14), yea_min_doy_14, type = "l", col = col_melt_14, lwd = 1.8)
+segments(x0 = 1, y0 = (1*slo_doy_7+int_doy_7), x1 = 59, y1 =(59*slo_doy_7+int_doy_7),
+         col = col_melt_7, lwd = 1.2, lty = "dashed")
+segments(x0 = 1, y0 = (1*slo_doy_14+int_doy_14), x1 = 59, y1 =(59*slo_doy_14+int_doy_14),
+         col = col_melt_14, lwd = 1.2, lty = "dashed")
+abline(h = x_axis_tic, col = "grey65", lwd = 0.7, lty = "dotted")
+abline(v =c(7, 17, 27, 37, 47, 57), col = "grey65", lwd = 0.7, lty = "dotted")
+axis(1, at = c(7, 17, 27, 37, 47, 57) , labels = c(1960, 1970, 1980, 1990, 2000, 2010),
+     mgp=c(3, 0.60, 0), tck = -0.01, cex.axis = 1.6)
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+axis(2, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.04)#plot ticks
+axis(2, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.25, 0), cex.axis = 1.6)#plot labels
+mtext("b) Timing basin", side = 3, line = 0.3, adj = 0.0, cex = 1.6)
+mtext("Month", side = 2, line = 2.0, adj = 0.5, cex = 1.4)
+mtext(paste0(round(slo_doy_7, digits = 2)*10,  " day/dec"), col = col_melt_7, side = 3, line = 1.1, cex = 0.9, adj = 0.75)
+mtext(paste0(round(slo_doy_14, digits = 2)*10, " day/dec"), col = col_melt_14, side = 3, line = 0.01, cex = 0.9, adj = 0.75)
+mtext(paste0("p = ", round(sig_doy_7, digits = 2)), col = col_melt_7, side = 3, line = 1.1, cex = 0.9, adj = 1.0)
+mtext(paste0("p = ", round(sig_doy_14, digits = 2)), col = col_melt_14, side = 3, line = 0.01, cex = 0.9, adj = 1.0)
+legend("bottomleft", c("7-day sum", "14-day sum"), pch = 19, col = c(col_melt_7, col_melt_14), cex = 1.5, bg = "white")
+box()
+
+
+#Magnitude Basin
+ylims <- range(yea_min_mag_14, yea_min_mag_7)
+
+plot(1:length(yea_min_mag_14), yea_min_mag_14, type = "n", ylim = ylims, col = viridis(9, direction = 1)[4], axes = F,
+     ylab = "", xlab = "")
+lines(1:length(yea_min_mag_7), yea_min_mag_7, type = "l", ylim = ylims, col = col_melt_7, lwd = 1.8)
+lines(1:length(yea_min_mag_14), yea_min_mag_14, type = "l", ylim = ylims, col = col_melt_14, lwd = 1.8)
+segments(x0 = 1, y0 = (1*slo_mag_7+int_mag_7), x1 = 59, y1 =(59*slo_mag_7+int_mag_7),
+         col = col_melt_7, lwd = 1.2, lty = "dashed")
+segments(x0 = 1, y0 = (1*slo_mag_14+int_mag_14), x1 = 59, y1 =(59*slo_mag_14+int_mag_14),
+         col = col_melt_14, lwd = 1.2, lty = "dashed")
+axis(1, at = c(7, 17, 27, 37, 47, 57) ,labels = c(1960, 1970, 1980, 1990, 2000, 2010),
+     mgp=c(3, 0.60, 0), tck = -0.01, cex.axis = 1.6)
+axis(2, mgp=c(3, 0.25, 0), tck = -0.01, cex.axis = 1.6)
+abline(v = c(7, 17, 27, 37, 47, 57), col = "grey65", lwd = 0.7, lty = "dotted")
+abline(h = c(1000, 2000, 3000), col = "grey65", lwd = 0.7, lty = "dotted")
+mtext("c) Magnitude basin", side = 3, line = 0.3, adj = 0.0, cex = 1.6)
+mtext("Melt volume [hm³]", side = 2, line = 2.0, adj = 0.5, cex = 1.4)
+mtext(paste0(round(slo_mag_7, digits = 2)*10,  " hm³/dec"), col = col_melt_7, side = 3, line = 1.1, cex = 0.9, adj = 0.75)
+mtext(paste0(round(slo_mag_14, digits = 2)*10, " hm³/dec"), col = col_melt_14, side = 3, line = 0.01, cex = 0.9, adj = 0.75)
+mtext(paste0("p = ", round(sig_mag_7, digits = 2)), col = col_melt_7, side = 3, line = 1.1, cex = 0.9, adj = 1.0)
+mtext(paste0("p = ", round(sig_mag_14, digits = 2)), col = col_melt_14, side = 3, line = 0.01, cex = 0.9, adj = 1.0)
+legend("topright", c("7-day sum", "14-day sum"), pch = 19, col = c(col_melt_7, col_melt_14), cex = 1.5, bg = "white")
+box()
+
+dev.off()
+
+
+#weatype_calc----
+
+start_year <- 1959
+end_year <- 2017
+
+start_day <- "1959-01-01"
+end_day   <- "2017-12-31"
+
+wtc_sel <- "gwt26_msl" #gwt26_msl, gwt26_500, cap27_msl
+
+my_wtc_sel <- 1:26
+
+# base_dir <- "/home/rottler/ownCloud/RhineFlow/rhine_obs/"
+# source(paste0(base_dir, "R/rhine_flow/2_rhine_functions.R"))
+
+cli_stats <- c("BAS", "BER", "SMA")
+
+for(i in 1:3){
+  
+  cli_sel <- cli_stats[i]
+  #sel_varies
+  
+  
+  if(wtc_sel == "gwt26_msl"){
+    
+    #Weather type classification data: GWT26 based on mean sea level pressure
+    wtc_data <- read.table("U:/rhine_snow/data/idaweb/order64866/order_64866_data.txt",
+                           sep = ";", skip = 1, header = TRUE, na.strings = "-")
+    wtc_data$date <- as.POSIXct(strptime(wtc_data$time, "%Y%m%d", tz="UTC"))
+    wtc_data$valu <- wtc_data$wkwtp3d0
+    
+  }
+  
+  if(wtc_sel == "gwt26_500"){
+    
+    #Weather type classification data: GWT26 based on mean sea level pressure
+    wtc_data <- read.table("U:/rhine_snow/data/idaweb/order75953/order_75953_data.txt",
+                           sep = ";", skip = 1, header = TRUE, na.strings = "-")
+    wtc_data$date <- as.POSIXct(strptime(wtc_data$time, "%Y%m%d", tz="UTC"))
+    wtc_data$valu <- wtc_data$wkwtg3d0
+    
+  }
+  
+  if(wtc_sel == "cap27_msl"){
+    
+    #Weather type classification data: GWT26 based on mean sea level pressure
+    wtc_data <- read.table(paste0(base_dir, "data/idaweb/order64973/order_64973_data.txt"),
+                           sep = ";", skip = 1, header = TRUE, na.strings = "-")
+    wtc_data$date <- as.POSIXct(strptime(wtc_data$time, "%Y%m%d", tz="UTC"))
+    wtc_data$valu <- wtc_data$wkcap3d0
+    
+  }
+  
+  if(cli_sel == "BAS"){
+    
+    # Basel / Binningen
+    data_cli <- read.table("U:/rhine_snow/data/idaweb/order64388/order_64388_data.txt",
+                           sep = ";", skip = 2, header = T, na.strings = c("-"))
+    data_cli$date <- as.POSIXct(strptime(data_cli$time, "%Y%m%d", tz="UTC"))
+    data_cli$valu <- data_cli$rhs150d0
+    
+  }
+  
+  if(cli_sel == "BER"){
+    
+    # Bern
+    data_cli <- read.table("U:/rhine_snow/data/idaweb/order64387/order_64387_data.txt",
+                           sep = ";", skip = 2, header = T, na.strings = c("-"))
+    data_cli$date <- as.POSIXct(strptime(data_cli$time, "%Y%m%d", tz="UTC"))
+    data_cli$valu <- data_cli$rhs150d0
+    
+  }
+  
+  if(cli_sel == "SMA"){
+    
+    # Zuerich
+    data_cli <- read.table("U:/rhine_snow/data/idaweb/order64389/order_64389_data.txt",
+                           sep = ";", skip = 2, header = T, na.strings = c("-"))
+    data_cli$date <- as.POSIXct(strptime(data_cli$time, "%Y%m%d", tz="UTC"))
+    data_cli$valu <- data_cli$rhs150d0
+    
+  }
+  
+  
+  #calc_wtc_cli
+  
+  #Analysis within-type changes weather types using climate station data
+  f_wtc_cli <- function(wtc_data_in, clim_data_in, annu_analy,
+                        wtc_sel = my_wtc_sel, method_analy){
+    
+    start_date <- as.POSIXct(strptime(start_day, "%Y-%m-%d", tz="UTC"))
+    end_date   <- as.POSIXct(strptime(end_day,   "%Y-%m-%d", tz="UTC"))
+    full_date  <- seq(start_date, end_date, by="day")
+    
+    data_wtc <- data.frame(date = full_date,
+                           value = with(wtc_data_in, wtc_data_in$valu[match(full_date, date)]))
+    
+    data_cli <- data.frame(date = full_date,
+                           value = with(clim_data_in, clim_data_in$valu[match(full_date, date)]))
+    
+    n_wtcs <- length(wtc_sel)
+    n_year <- length(start_year:end_year)
+    
+    
+    f_wtc_annu <- function(input_wtc, input_cli, gwt_sel, my_annu_analy = annu_analy){
+      
+      #Remove 29th of February
+      input_wtc <- input_wtc[-which(format(input_wtc$date, "%m%d") == "0229"),]
+      input_cli <- input_cli[-which(format(input_cli$date, "%m%d") == "0229"),]
+      
+      #Vector with the 365 days of the year
+      days <- seq(as.Date('2014-01-01'), to=as.Date('2014-12-31'), by='days')
+      days <- format(days,"%m-%d")
+      
+      #Order data by day
+      data_day_wtc <-  matrix(NA, nrow = length(start_year:end_year), ncol = 366)
+      data_day_cli <-  matrix(NA, nrow = length(start_year:end_year), ncol = 366)
+      colnames(data_day_wtc) <- c("year", days)
+      colnames(data_day_cli) <- c("year", days)
+      data_day_wtc[ ,1] <- start_year:end_year
+      data_day_cli[ ,1] <- start_year:end_year
+      
+      for(i in 0:(length(start_year:end_year)-1)) {
+        
+        data_day_wtc[i+1, 2:366] <- input_wtc$valu[(i*365+1):((i+1)*365)]
+        data_day_cli[i+1, 2:366] <- input_cli$valu[(i*365+1):((i+1)*365)]
+        
+      }
+      
+      wtc_out <- rep(NA, nrow(data_day_cli))
+      
+      for(i in 1:nrow(data_day_cli)){
+        
+        if(my_annu_analy == "mean"){
+          
+          wtc_out[i] <- mea_na(data_day_cli[i, which(data_day_wtc[i, ] == gwt_sel)])
+          
+        }
+        
+        if(my_annu_analy == "sum"){
+          
+          wtc_out[i] <- sum_na(data_day_cli[i, which(data_day_wtc[i, ] == gwt_sel)])
+          
+        }
+        
+      }
+      
+      return(wtc_out)
+      
+    }
+    
+    wtc_out <- matrix(data=rep(NA, n_wtcs*n_year), ncol = n_wtcs)
+    
+    for(i in 1:n_wtcs){
+      
+      wtc_out[, i] <- f_wtc_annu(input_wtc = data_wtc,
+                                 input_cli = data_cli,
+                                 gwt_sel = i)
+    }
+    
+    if(method_analy == "mean"){
+      
+      wtc_return <- apply(wtc_out, 2, mea_na)
+      
+    }
+    
+    if(method_analy == "sens_slope"){
+      wtc_sens_slope <- function(wtc_data_in, wtc_cover = 0.1){
+        sens_slo(data_in = wtc_data_in, cover_thresh = wtc_cover)
+      }
+      
+      wtc_return <- apply(wtc_out, 2, wtc_sens_slope) * 10 # per decade
+    }
+    
+    return(wtc_return)
+    
+  }
+  
+  #Analysis frequency and  change in frequency weather types
+  f_wtc_fre <- function(wtc_data_in, wtc_sel = my_wtc_sel, method_analy){
+    
+    start_date <- as.POSIXct(strptime(start_day, "%Y-%m-%d", tz="UTC"))
+    end_date   <- as.POSIXct(strptime(end_day,   "%Y-%m-%d", tz="UTC"))
+    full_date  <- seq(start_date, end_date, by="day")
+    
+    data_wtc <- data.frame(date = full_date,
+                           value = with(wtc_data_in, wtc_data_in$valu[match(full_date, date)]))
+    
+    n_wtcs <- length(wtc_sel)
+    n_year <- length(start_year:end_year)
+    
+    f_annu_fre <- function(input_wtc, gwt_sel){
+      
+      #Remove 29th of February
+      input_wtc <- input_wtc[-which(format(input_wtc$date, "%m%d") == "0229"),]
+      
+      #Vector with the 365 days of the year
+      days <- seq(as.Date('2014-01-01'), to=as.Date('2014-12-31'), by='days')
+      days <- format(days,"%m-%d")
+      
+      #Order data by day
+      data_day_wtc <-  matrix(NA, nrow = length(start_year:end_year), ncol = 366)
+      colnames(data_day_wtc) <- c("year", days)
+      data_day_wtc[ ,1] <- start_year:end_year
+      
+      for(i in 0:(length(start_year:end_year)-1)) {
+        
+        data_day_wtc[i+1, 2:366] <- input_wtc$valu[(i*365+1):((i+1)*365)]
+        
+      }
+      
+      fre_wtc <- rep(NA, nrow(data_day_wtc))
+      
+      for(i in 1:nrow(data_day_wtc)){
+        
+        fre_wtc[i] <-length(which(data_day_wtc[i, ] == gwt_sel))
+        
+      }
+      
+      return(fre_wtc)
+      
+    }
+    
+    wtc_fre <- matrix(data=rep(NA, n_wtcs*n_year), ncol = n_wtcs)
+    
+    k <- 1
+    for(i in wtc_sel){
+      
+      wtc_fre[, k] <- f_annu_fre(input_wtc = data_wtc,
+                                 gwt_sel = i)
+      k <- k+1
+    }
+    
+    #plot(wtc_fre[, 24], type = "l")
+    
+    if(method_analy == "mean"){
+      
+      wtc_fre_out <- apply(wtc_fre, 2, mea_na)
+      
+    }
+    
+    if(method_analy == "sens_slope"){
+      
+      f_sens_slope <- function(data_in, cover_thresh = 0.9){
+        
+        if(length(which(is.na(data_in))) / length(data_in) > (1-cover_thresh)){
+          sens_slo <-  NA
+        }else{
+          time_step <- 1:length(data_in)
+          sens_slo <- as.numeric(zyp.sen(data_in~time_step)$coefficients[2])
+          # sens_slo <- as.numeric(zyp.trend.vector(data_in, method = "zhang", conf.intervals = F)[2])
+        }
+        return(sens_slo)
+      }
+      
+      wtc_fre_out <- apply(wtc_fre, 2, f_sens_slope) * 10 # per decaade
+      
+    }
+    
+    return(wtc_fre_out)
+    
+  }
+  
+  
+  wtc_sum_mea <- f_wtc_cli(wtc_data_in = wtc_data,
+                           clim_data_in = data_cli,
+                           annu_analy = "sum",
+                           wtc_sel = my_wtc_sel,
+                           method_analy = "mean")
+  
+  wtc_sum_slo <- f_wtc_cli(wtc_data_in = wtc_data,
+                           clim_data_in = data_cli,
+                           annu_analy = "sum",
+                           wtc_sel = my_wtc_sel,
+                           method_analy = "sens_slope")
+  
+  wtc_mea_mea <- f_wtc_cli(wtc_data_in = wtc_data,
+                           clim_data_in = data_cli,
+                           annu_analy = "mean",
+                           wtc_sel = my_wtc_sel,
+                           method_analy = "mean")
+  
+  wtc_mea_slo <- f_wtc_cli(wtc_data_in = wtc_data,
+                           clim_data_in = data_cli,
+                           annu_analy = "mean",
+                           wtc_sel = my_wtc_sel,
+                           method_analy = "sens_slope")
+  
+  if(cli_sel == "BAS"){
+    
+    wtc_sum_mea_bas <- wtc_sum_mea
+    wtc_sum_slo_bas <- wtc_sum_slo
+    wtc_mea_mea_bas <- wtc_mea_mea
+    wtc_mea_slo_bas <- wtc_mea_slo
+    
+  }
+  
+  if(cli_sel == "BER"){
+    
+    wtc_sum_mea_ber <- wtc_sum_mea
+    wtc_sum_slo_ber <- wtc_sum_slo
+    wtc_mea_mea_ber <- wtc_mea_mea
+    wtc_mea_slo_ber <- wtc_mea_slo
+    
+  }
+  
+  if(cli_sel == "SMA"){
+    
+    wtc_sum_mea_sma <- wtc_sum_mea
+    wtc_sum_slo_sma <- wtc_sum_slo
+    wtc_mea_mea_sma <- wtc_mea_mea
+    wtc_mea_slo_sma <- wtc_mea_slo
+    
+  }
+  
+}
+
+#calc_wtc
+
+wtc_fre_mea <- f_wtc_fre(wtc_data_in = wtc_data,
+                         method_analy = "mean")
+
+wtc_fre_slo <- f_wtc_fre(wtc_data_in = wtc_data,
+                         method_analy = "sens_slope")
+
+#weatype_visu----
+
+pdf(paste0(base_dir,"R/figs_exp/weatype.pdf"), width = 14, height = 8)
+
+layout(matrix(c(1,3,5, 2,4,6),
+              3, 2), widths=c(), heights=c(1,1,1,1))
+par(oma = c(0,0,0,0))
+
+mar_1 <- c(2.2, 2.0, 2.0, 0.5)
+mar_2 <- c(3.2, 2.2, 2.2, 0.5)
+
+gap_lenght <- 2
+lwd_bar <- 2.5
+gaps_wtc_plot <- 0:25 * gap_lenght
+size_y_labs <- 1.5
+size_x_labs <- 1.5
+size_main <- 1.5
+line_main <- 0.3
+x_lab_posi <- c(1:8, 10, 12, 14, 16, 18, 20, 22, 24, 26)
+
+par(family = "serif")
+
+#Plot a: Mean annual frequency of weather types
+
+par(mar = mar_1)
+
+my_ylim <- c(0, max_na(wtc_fre_mea) + 5)
+my_xlim <- c(0.5, 26.5)
+
+plot(wtc_fre_mea, pch = 19, type = "h", lwd = 8, lend = 1, axes = F, xlab = "", ylab = "",
+     xaxs = "i", yaxs = "i", ylim = my_ylim, xlim = my_xlim)
+axis(1, at = (1:27)-0.5, labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+axis(1, at = x_lab_posi, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed")
+abline(v = c(8.5, 16.5, 24.5), lty = "dashed")
+mtext("a) Annual GWT frequency", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[day]", side = 3, line = line_main, cex = 1.2, adj = 1)
+box(lwd = 1.2)
+
+directs <- rep(c("W", "SW", "NW", "N", "NE", "E", "SE", "S"), 3)
+pos_labs <- (1:26)
+for (i in 1:8){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 3, line = - 1.2)
+}
+for (i in 9:16){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 3, line = - 1.2)
+}
+for (i in 17:24){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 3, line = - 1.2)
+}
+mtext("cyclonic",                  side = 3, line = -1.8, adj = 0.12, padj = 1, cex = 0.9)
+mtext("anticyclonic",              side = 3, line = -1.8, adj = 0.45, padj = 1, cex = 0.9)
+mtext("indifferent",               side = 3, line = -1.8, adj = 0.79, padj = 1, cex = 0.9)
+mtext("low pressure",              side = 4, line = -3.8, adj = 0.90, padj = 1, cex = 0.9)
+mtext("high pressure",             side = 4, line = -2.1, adj = 0.925, padj = 1, cex = 0.9)
+
+#Plot b: Trend annual frequency of weather types
+
+my_ylim <- c(min_na(wtc_fre_slo) - 0.2, max_na(wtc_fre_slo) + 0.2)
+my_xlim <- c(0.5, 26.5)
+
+plot(wtc_fre_slo, pch = 19, type = "h", lwd = 8, lend = 1, axes = F, xlab = "", ylab = "",
+     xaxs = "i", yaxs = "i", ylim = my_ylim, xlim = my_xlim)
+axis(1, at = (1:27)-0.5, labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+axis(1, at = x_lab_posi, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed")
+abline(v = c(8.5, 16.5, 24.5), lty = "dashed")
+mtext("b) Trend annual GWT frequency", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[day/dec]", side = 3, line = line_main, cex = 1.2, adj = 1)
+box(lwd = 1.2)
+
+directs <- rep(c("W", "SW", "NW", "N", "NE", "E", "SE", "S"), 3)
+pos_labs <- (1:26)
+for (i in 1:8){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 3, line = - 1.2)
+}
+for (i in 9:16){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 1, line = - 1.2)
+}
+for (i in 17:24){
+  mtext(text = directs[i], at = pos_labs[i], cex = 0.8, side = 3, line = - 1.2)
+}
+mtext("cyclonic",                  side = 3, line = -1.8, adj = 0.12, padj = 1, cex = 0.9)
+mtext("anticyclonic",              side = 1, line = -3.2, adj = 0.45, padj = 1, cex = 0.9)
+mtext("indifferent",               side = 3, line = -1.8, adj = 0.79, padj = 1, cex = 0.9)
+mtext("low pressure",              side = 4, line = -3.8, adj = 0.10, padj = 1, cex = 0.9)
+mtext("high pressure",             side = 4, line = -2.1, adj = 0.10, padj = 1, cex = 0.9)
+
+
+# Plot c: Mean precipitation per GWT
+
+gap_lenght <- 2
+lwd_bar <- 2.5
+gaps_wtc_plot <- 0:25 * gap_lenght
+
+my_ylim <- c(0, max_na(c(wtc_mea_mea_bas, wtc_mea_mea_ber, wtc_mea_mea_sma)) + 1.2)
+my_xlim <- c(-0.5,(3 * 26 + gap_lenght*25) + gap_lenght - 0.5)
+
+plot(((1:26) * 3 - 2) + gaps_wtc_plot, wtc_mea_mea_bas, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 1) + gaps_wtc_plot, wtc_mea_mea_ber, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 0) + gaps_wtc_plot, wtc_mea_mea_sma, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+# par(new = T)
+# plot(((1:26) * 4 - 0) + gaps_wtc_plot, wtc_mea_mea_hoh, type = "h", col = "black", lwd = 3, lend = 2,
+#      xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+axis(1, at = c(-0.5, ((1:26) * 3 + 1.5) + gaps_wtc_plot), labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+
+axis(1, at = (x_lab_posi * 3) + gaps_wtc_plot[x_lab_posi] -1.0, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed", lwd = 0.7)
+abline(v = c(8, 16, 24) * 3 + 1.5 + gaps_wtc_plot[c(8, 16, 24)], lty = "dashed", lwd = 0.7)
+mtext("c) Precipitation per occurence", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[mm/1d]", side = 3, line = line_main, cex = 1.2, adj = 1)
+box(lwd = 1.2)
+
+# mtext("Basel",     side = 3, line = -3.0 + 2.5, adj = 0.005, padj = 1, cex = 0.6)
+# mtext("Bern",      side = 3, line = -3.6 + 2.5, adj = 0.016, padj = 1, cex = 0.6)
+# mtext("Zuerich",   side = 3, line = -4.2 + 2.5, adj = 0.022,  padj = 1, cex = 0.6)
+# # mtext("Hohenp.",   side = 3, line = -4.8 + 2.5, adj = 0.029, padj = 1, cex = 0.6)
+# 
+# lines(c(1,1), c(9.3, 10.5), type = "l", lwd = 0.5)
+# lines(c(2,2), c(9.3, 10.1), type = "l", lwd = 0.5)
+# lines(c(3,3), c(9.3, 9.7), type = "l", lwd = 0.5)
+# lines(c(4,4), c(9.9, 10.00), type = "l", lwd = 0.5)
+
+
+# Plot: d: Trend mean precipiation per day
+
+my_ylim <- c(min_na(c(wtc_mea_slo_bas, wtc_mea_slo_ber, wtc_mea_slo_sma)) - 0.03,
+             max_na(c(wtc_mea_slo_bas, wtc_mea_slo_ber, wtc_mea_slo_sma)) + 0.03)
+my_xlim <- c(-0.5,(3 * 26 + gap_lenght*25) + gap_lenght - 0.5)
+
+plot(((1:26) * 3 - 2) + gaps_wtc_plot, wtc_mea_slo_bas, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 1) + gaps_wtc_plot, wtc_mea_slo_ber, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 0) + gaps_wtc_plot, wtc_mea_slo_sma, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+# par(new = T)
+# plot(((1:26) * 4 - 0) + gaps_wtc_plot, wtc_mea_slo_hoh, type = "h", col = "black", lwd = 3, lend = 2,
+#      xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+axis(1, at = c(-0.5, ((1:26) * 3 + 1.5) + gaps_wtc_plot), labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+
+axis(1, at = (x_lab_posi * 3) + gaps_wtc_plot[x_lab_posi] -1.0, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed", lwd = 0.7)
+abline(v = c(8, 16, 24) * 3 + 1.5 + gaps_wtc_plot[c(8, 16, 24)], lty = "dashed", lwd = 0.7)
+mtext("d) Trend precipiation per occur.", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[(mm/1d)/dec]", side = 3, line = line_main, cex = 1.2, adj = 1)
+box(lwd = 1.2)
+
+
+# Plot e: Mean annual sum
+
+par(mar = mar_2)
+
+my_ylim <- c(0, max_na(c(wtc_sum_mea_bas, wtc_sum_mea_ber, wtc_sum_mea_sma)) + 5)
+my_xlim <- c(-0.5,(3 * 26 + gap_lenght*25) + gap_lenght - 0.5)
+
+plot(((1:26) * 3 - 2) + gaps_wtc_plot, wtc_sum_mea_bas, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 1) + gaps_wtc_plot, wtc_sum_mea_ber, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 0) + gaps_wtc_plot, wtc_sum_mea_sma, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+
+axis(1, at = c(-0.5, ((1:26) * 3 + 1.5) + gaps_wtc_plot), labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+
+axis(1, at = (x_lab_posi * 3) + gaps_wtc_plot[x_lab_posi] -1.0, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed", lwd = 0.7)
+abline(v = c(8, 16, 24) * 3 + 1.5 + gaps_wtc_plot[c(8, 16, 24)], lty = "dashed", lwd = 0.7)
+mtext("e) Annual total precipiation", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[mm/year]", side = 3, line = line_main, cex = 1.2, adj = 1)
+mtext("GWT26 weather type", side = 1, line = 2, cex = 1.2, adj = 0.5)
+box(lwd = 1.2)
+
+mtext("Basel",     side = 3, line = -2.2 - 0.8, adj = 0.005, padj = 1, cex = 0.8)
+mtext("Bern",      side = 3, line = -3.1 - 0.8, adj = 0.017, padj = 1, cex = 0.8)
+mtext("Zuerich",   side = 3, line = -4.1 - 0.8, adj = 0.023, padj = 1, cex = 0.8)
+# mtext("Hohenp.",   side = 3, line = -4.8 - 0.8, adj = 0.029, padj = 1, cex = 0.6)
+
+lines(c(1,1), c(75+0, 132-20), type = "l", lwd = 0.5)
+lines(c(2,2), c(75+0, 122-20), type = "l", lwd = 0.5)
+lines(c(3,3), c(75+0, 116-20), type = "l", lwd = 0.5)
+# lines(c(4,4), c(75+0, 110-20), type = "l", lwd = 0.5)
+
+# Plot f: Trend annual sum
+
+my_ylim <- c(min_na(c(wtc_sum_slo_bas, wtc_sum_slo_ber, wtc_sum_slo_sma)) - 0.5,
+             max_na(c(wtc_sum_slo_bas, wtc_sum_slo_ber, wtc_sum_slo_sma)) + 0.5)
+my_xlim <- c(-0.5,(3 * 26 + gap_lenght*25) + gap_lenght - 0.5)
+
+plot(((1:26) * 3 - 2) + gaps_wtc_plot, wtc_sum_slo_bas, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 1) + gaps_wtc_plot, wtc_sum_slo_ber, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+par(new = T)
+plot(((1:26) * 3 - 0) + gaps_wtc_plot, wtc_sum_slo_sma, type = "h", col = "black", lwd = 3, lend = 2,
+     xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+# par(new = T)
+# plot(((1:26) * 3 - 0) + gaps_wtc_plot, wtc_sum_slo_hoh, type = "h", col = "black", lwd = 3, lend = 2,
+#      xaxs = "i", yaxs = "i", axes = F, ylab = "", xlab = "", ylim = my_ylim, xlim = my_xlim)
+axis(1, at = c(-0.5, ((1:26) * 3 + 1.5) + gaps_wtc_plot), labels = rep("", 27), tick = TRUE,
+     col="black", col.axis="black", tck=-0.04)#plot ticks
+
+axis(1, at = (x_lab_posi * 3) + gaps_wtc_plot[x_lab_posi] -1.0, labels = x_lab_posi, tick = FALSE,
+     col = "black", col.axis = "black", mgp = c(3, 0.4, 0), cex.axis = size_x_labs)
+axis(2, mgp = c(3, 0.3, 0), tck = -0.015, cex.axis = size_y_labs)
+abline(h = 0, lty = "dashed", lwd = 0.7)
+abline(v = c(8, 16, 24) * 3 + 1.5 + gaps_wtc_plot[c(8, 16, 24)], lty = "dashed", lwd = 0.7)
+mtext("f) Trend annual total precipiation", side = 3, line = line_main, cex = size_main, adj = 0)
+mtext("[(mm/year)/dec]", side = 3, line = line_main, cex = 1.2, adj = 1)
+mtext("GWT26 weather type", side = 1, line = 2, cex = 1.2, adj = 0.5)
+box(lwd = 1.2)
+
+dev.off()
+
+
+#scf_series----
+
+pdf(paste0(base_dir, "R/figs_exp/sc_frac.pdf"), width = 8, height = 2.5)
+
+par(mar = c(1.5, 2.0, 1.5, 0.8))
+par(family = "serif")
+
+x_labs <- 2003:2012
+x_tics <- which(as.character(scf_eurac$date) %in% c(paste0(x_labs, "-01-01")) )
+
+plot(scf_eurac$scf, type = "n", axes = F, ylim = c(0, 1), xlab = "", ylab ="")
+lines(scf_eurac$scf, col = "steelblue4")
+lines(scf_simu_vali$scf, col = "darkred")
+axis(1, at = x_tics, mgp=c(3, 0.15, 0), labels = rep("", length(x_tics)), tick = TRUE)
+axis(1, at = x_tics+182, mgp=c(3, 0.15, 0), labels = x_labs, tick = FALSE, cex.axis = 0.8)
+axis(2, mgp=c(3, 0.15, 0), tck = -0.011, cex.axis = 0.7)
+mtext("Snow cover fraction [-]", side = 2, line = 1.0, cex = 0.9) 
+legend("topleft", c("observed", "similated"), pch = 19, cex = 0.6, col = c("steelblue4", "darkred"), bty = "n")
+box()
+
+dev.off()
+
+
 

@@ -1023,7 +1023,7 @@ meteo_date_cal <- meteo_date[min_ind:max_ind]
 pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
 
 par(mfrow = c(4, 1))
-par(mar = c(2, 5.0, 2.5, 0.5))
+par(mar = c(2, 5.0, 2.7, 0.5))
 par(family = "serif")
 
 main_plots <- c("a) Andermatt (1440 m)", "b) Davos (1560 m)", "c) Zermatt (1600 m)","d) Weissfluhjoch (2540 m)", "Zermatt")
@@ -1039,17 +1039,17 @@ for(i in 1:ncol(snows_cal)){
   plot(snows_cal[, i], type = "n", ylim = c(y_min, y_max), axes = F, ylab = "", 
        xlab = "", xaxs = "i")
   abline(v = c(x_tics), lty = "dashed", col = "grey50", lwd = 0.8)
-  lines(snows_cal[, i], col = scales::alpha("black", alpha = 1.0), lwd = 1.6)
-  points(snows_stat_cal[, i], pch = 21, bg = scales::alpha("steelblue4", alpha = 0.5), 
+  lines(snows_cal[, i], col = scales::alpha("black", alpha = 1.0), lwd = 1.7)
+  points(snows_stat_cal[, i], pch = 21, bg = scales::alpha("steelblue4", alpha = 0.7), 
          cex = 1.5, col = "steelblue")
   axis(2, cex = 1.5, mgp=c(3, 0.50, 0), cex.axis = 1.6, tck = -0.02)
-  axis(1, at = x_tics, labels = rep("", length(x_tics)), tck = -0.07)
-  axis(1, at = x_labs, labels = x_labels, tick = F, mgp=c(3, 0.50, 0), cex.axis = 1.4)
-  mtext(main_plots[i], side= 3, line = 0.3, cex = 1.4, adj = 0.0)
-  mtext("SWE [m]", side= 2, line = 2.5, cex = 1.2, adj = 0.5)
+  axis(1, at = x_tics, labels = rep("", length(x_tics)), tck = -0.05)
+  axis(1, at = x_labs, labels = x_labels, tick = F, mgp=c(3, 0.60, 0), cex.axis = 1.7)
+  mtext(main_plots[i], side= 3, line = 0.3, cex = 1.6, adj = 0.0)
+  mtext("SWE [m]", side= 2, line = 2.7, cex = 1.4, adj = 0.5)
   box()
   if(i == 1){
-    legend("topleft", c("obs", "sim."), pch = 19, cex = 1.5, col = c("steelblue4", "black"), bg = "white")
+    legend("topleft", c("obs", "sim."), pch = 19, cex = 1.7, col = c("steelblue4", "black"), bg = "white")
     
   }
   

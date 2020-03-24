@@ -130,7 +130,8 @@ gc() #colltect some garbage
 scf_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
 scf_buf <- mask(scf_buf_crop, basin_base_buf)
 scf_buf@data@values <- scd_eurac_buf_sum
-plot(scf_buf)
+scf_buf_aggr <- aggregate(scf_buf, fact = 4, fun = mean, na.rm = TRUE)
+plot(scf_buf_aggr, col = viridis(200, direction = -1))
 
 #get lake sufaces
 block_size <- 1000
@@ -161,40 +162,35 @@ for(b in 1:length(block_stas)){
 
 lak_eurac_buf_sum <- apply(lak_eurac_buf_all, 1, sum_na)
 rm(lak_eurac_buf_all) #remove file after calculation as very big
+gc() #colltect some garbage
 
 #fill dummy raster with calculated lake surfaces
 lak_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
 lak_buf <- mask(lak_buf_crop, basin_base_buf)
-lak_buf@data@values <- 0
-laks_ind <- which(lak_eurac_buf_sum > (length(date_vali)*0.9))
-lak_buf@data@values[laks_ind] <- 100
-plot(lak_buf)
+lak_buf@data@values <- lak_eurac_buf_sum
+lak_buf_aggr <- aggregate(lak_buf, fact = 4, fun = mean, na.rm = TRUE)
+laks_ind <- which(lak_buf_aggr@data@values > (length(date_vali)*0.90))#define lake surfaces
+lak_buf_aggr@data@values <- 0
+lak_buf_aggr@data@values[laks_ind] <- 100
+plot(lak_buf_aggr)
 plot(basin_base_buf, add = T)
 
 #calculate glacier surfaces
 gla_buf_crop <- raster::crop(scf_file, extent(basin_base_buf))
 gla_buf <- mask(gla_buf_crop, basin_base_buf)
-gla_buf@data@values <- 0
-glacs_ind <- which(scd_eurac_buf_sum > (length(date_vali)*0.9))
-gla_buf@data@values[glacs_ind] <- 100
-plot(gla_buf)
+gla_buf@data@values <- scd_eurac_buf_sum
+gla_buf_aggr <- aggregate(gla_buf, fact = 4, fun = mean, na.rm = TRUE)
+glac_ind <- which(gla_buf_aggr@data@values > (length(date_vali)*0.90))#define lake surfaces
+gla_buf_aggr@data@values <- 0
+gla_buf_aggr@data@values[glac_ind] <- 100
+plot(gla_buf_aggr)
 plot(basin_base_buf, add = T)
 
-#aggregate EURAC data to simulation resolution
-scf_buf_aggr <- aggregate(scf_buf, fact = 4, fun = median, na.rm = TRUE)
-gla_buf_aggr <- aggregate(gla_buf, fact = 4, fun = median, na.rm = TRUE)
-lak_buf_aggr <- aggregate(lak_buf, fact = 4, fun = median, na.rm = TRUE)
-plot(scf_buf_aggr)
-plot(gla_buf_aggr)
-plot(lak_buf_aggr)
+#Remove lake (and glacier surfaces)
 
-#Remove lake and glacier surfaces
-laks_rem_ind <- which(lak_buf_aggr@data@values == 100)
-glac_rem_ind <- which(gla_buf_aggr@data@values == 100)
-
-scf_buf_aggr@data@values[laks_rem_ind] <- NA
-scf_buf_aggr@data@values[glac_rem_ind] <- NA
-plot(scf_buf_aggr)
+scf_buf_aggr@data@values[laks_ind] <- NA
+# scf_buf_aggr@data@values[glac_ind] <- NA
+plot(scf_buf_aggr, col = viridis(n=200, direction = -1))
 
 #Get values grid points simulated
 scd_eurac <- raster::extract(scf_buf_aggr, grid_points_d_in)
@@ -229,13 +225,13 @@ val2col <- function(val_in, dat_ref, do_log = F){
   
   if(length(col_out) < 1){
     
-    col_out <- "red"
+    col_out <- "white"
     
   }
   
   if(set2NA){
     
-    col_out <- "red"
+    col_out <- "white"
     
   }
   
@@ -253,7 +249,6 @@ plot(basin_base)
 points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col = cols_spat, cex = 0.30)
 plot(basin_base, add =T)
 
-
 #SCF times series for selected basin
 f_scf <- function(file_path, basin_in, basin_in_buf, aggr_fac, snow_val, provider){
   
@@ -265,16 +260,16 @@ f_scf <- function(file_path, basin_in, basin_in_buf, aggr_fac, snow_val, provide
   scf_buf <- mask(scf_cro, basin_in_buf)
   
   #aggregate to simulation resolution
-  scf_agg <- aggregate(scf_buf, fact = aggr_fac, fun = modal, na.rm = TRUE)
+  scf_agg <- aggregate(scf_buf, fact = aggr_fac, fun = modal, na.rm = TRUE) #modal: most frequent value in a set of values
   
   #get values for grid points simulated
   scf_values <- raster::extract(scf_agg, grid_points_d_in)
   
-  #remove lakes and glacier areas (previously determined)
+  #remove lakes areas (previously determined)
   scf_values[which(is.na(scd_eurac))] <- NA
   
   #Calculate snow cover fraction
-  scf_out <- length(which(scf_values == snow_val)) / length(scf_values) 
+  scf_out <- length(which(scf_values == snow_val)) / length(scf_values)
   
   #Extract date from file name
   if(provider == "DLR"){
@@ -327,7 +322,6 @@ for(b in 1:length(block_stas)){
   
 }
 
-
 date <- as.Date(as.character(scf_out_all[1, ]), "%Y-%m-%d")
 scf <- as.numeric(scf_out_all[2, ])
 
@@ -340,13 +334,37 @@ plot(scf_eurac, type = "l")
 
 #visu_time----
 
-scf_simu_vali  <- scf_simu [which(scf_simu$date  %in% date_vali), ]
+#Snow cover fraction simulations
+
+scf_simu_val <- NULL
+
+for(i in 1:nrow(snows_d)){
+  
+  print(i)
+  
+  scf_dummy <- snows_d[i, ]
+  
+  scf_dummy[which(scf_dummy >= 0.02)] <- 1
+  scf_dummy[which(scf_dummy <  0.02)] <- 0
+  
+  #remove lake areas
+  scf_dummy[which(is.na(scd_eurac))] <- NA
+  
+  scf_row <- sum(scf_dummy, na.rm = T)/  length(scf_dummy)
+  
+  scf_simu_val <- c(scf_simu_val, scf_row)
+  
+}
+
+scf_simu <- data.frame(date = date_snow,
+                       scf =  scf_simu_val)
+scf_simu_vali  <- scf_simu[which(scf_simu$date  %in% date_vali), ]
 
 #Calculate metrics
 my_kge <- KGE(scf_eurac$scf, scf_simu_vali$scf)
 my_cor <- cor(scf_eurac$scf, scf_simu_vali$scf, method = "pearson")
 
-pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/sc_frac.pdf", width = 6, height = 2.5)
+pdf(paste0(base_dir, "R/figs_exp/sc_frac.pdf"), width = 6, height = 2.5)
 
 par(mar = c(1.5, 2.0, 1.5, 0.8))
 par(family = "serif")
@@ -369,14 +387,12 @@ dev.off()
 
 #visu_space----
 
-plot(scf_file_sub, col = viridis(365, direction = -1))
-
 #clip validation period from simulations
 snow_simu_sel <- which(date_snow %in% date_vali)
 snows_d_vali <- snows_d[snow_simu_sel, ]
 
 #calculate sum days with snow for validation period
-f_snow2sc <- function(snow_in, snow_thresh = 0.03){
+f_snow2sc <- function(snow_in, snow_thresh = 0.02){
   
   snow_in[which(snow_in >= snow_thresh)] <- 1
   snow_in[which(snow_in <  snow_thresh)] <- 0
@@ -389,6 +405,9 @@ f_snow2sc <- function(snow_in, snow_thresh = 0.03){
 }
 
 sc_doy_simu <- apply(snows_d_vali, 2, f_snow2sc)
+
+#put lake sufaces to NA
+sc_doy_simu[which(is.na(scd_eurac))] <- NA
 
 val2col <- function(val_in, dat_ref, do_log = F){
   
@@ -420,13 +439,13 @@ val2col <- function(val_in, dat_ref, do_log = F){
   
   if(length(col_out) < 1){
     
-    col_out <- "red"
+    col_out <- "white"
     
   }
   
   if(set2NA){
     
-    col_out <- "red"
+    col_out <- "white"
     
   }
   
@@ -445,7 +464,7 @@ plot(basin_base, add =T)
 
 
 #Calculate difference Obs. and Sim.
-scd_dif <- (sc_doy_simu - scd_eurac) / 10
+scd_dif <- (sc_doy_simu - scd_eurac) / round(length(date_vali) / 365)
 
 # scd_dif[which(abs(scd_dif) > 200)] <- NA
 
@@ -470,9 +489,9 @@ val2col <- function(val_in, dat_ref, do_log = F, do_bicol = T, col_na = "white")
     col_ind <- round((abs(val_in) / max_na(abs(dat_ref))) * 100)
     
     if(val_in < 0){
-      my_col  <- colorRampPalette(c("grey98", "lemonchiffon2", "gold3", "orangered4", "darkred"))(100)
+      my_col  <- colorRampPalette(c("grey80", "lemonchiffon2", "lightgoldenrod2", "gold3", "goldenrod3", "orangered4", "darkred"))(100)
     }else{
-      my_col  <- colorRampPalette(c("grey98", "azure4", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
+      my_col  <- colorRampPalette(c("grey80", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
     }
     
   }else{
@@ -531,8 +550,8 @@ points(grid_points_d_in@coords[, 1], grid_points_d_in@coords[, 2], pch = 19, col
 plot(basin_base, add = T)
 
 par(mar = c(2.0, 0.2, 2.5, 3.5))
-cols_min <- colorRampPalette(c("darkred", "orangered4", "gold3", "lemonchiffon2", "grey80"))(100)
-cols_max <- colorRampPalette(c("grey80", "azure4", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "goldenrod3", "gold3", "lightgoldenrod2", "lemonchiffon2", "grey80"))(100)
+cols_max <- colorRampPalette(c("grey80", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
 my_col <- colorRampPalette(c(cols_min, cols_max))(200)
 my_bre <- seq(-max_na(abs(scd_dif)), max_na(abs(scd_dif)), length.out = length(my_col)+1)
 alptempr::image_scale(as.matrix(scd_dif), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
@@ -542,8 +561,7 @@ box()
 
 
 
-
-par(mfrow = c(1,1))
+  par(mfrow = c(1,1))
 par(mar = c(2,2,2,2))
 range(scd_dif, na.rm = T)
 hist(scd_dif, breaks = seq(-160, 155, 1), col = "grey52", border = F)

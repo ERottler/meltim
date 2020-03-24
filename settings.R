@@ -51,7 +51,7 @@ ezg_dir <- "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU/"
 
 # stopCluster(my_clust)
 
-n_cores <- 30 #number of cores used for parallel computing
+n_cores <- 20 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 my_clust <- makeCluster(n_cores)
@@ -60,13 +60,19 @@ registerDoParallel(my_clust)
 
 #save_files----
 
-save(date_snow, grid_points_d_in, snows_d, temps_d, precs_d, elevs_d,
-     basin, basin_buf,
+save(my_elev_bands, smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band, 
      
-     scf_eurac, 
+     date_snow, sno_vol_basin, prec_basin, svolu_d_band, 
      
-
-     file = "U:/rhine_snow/R/draft_snow_17_12.RData")
+     sc_doy_simu, basin_base, grid_points_d_in, scd_eurac, date_vali,
+     
+     scf_simu_vali, scf_eurac,
+     
+     tslo_band, tslo_band_mea, pslo_band, pslo_band_mea,
+     
+     snows_cal, snows_stat_cal, meteo_date_cal,
+     
+     file = "U:/rhine_snow/R/figs_exp/sim_scf_exp.RData")
 
 
 # 
