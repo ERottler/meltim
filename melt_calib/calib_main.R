@@ -34,17 +34,17 @@ source("melt_calib/optim_wrapper.R")
 snow_params <- read.table(paste0(base_dir, "R/meltim/snow_param.txt"), header = T, sep = ";")
 snow_params <- read.table(paste0(base_dir, "R/meltim/snow_param.txt"), header = T, sep = ";")
 
-sta_yea_sno <- 1984 #start year snow simulation
+sta_yea_sno <- 1982 #start year snow simulation
 end_yea_sno <- 2015 #end year snow simulation
 
-sta_yea_cal <- 1985 #start year calibration period (compare simulated end measured values)
+sta_yea_cal <- 1983 #start year calibration period (compare simulated end measured values)
 end_yea_cal <- 2014 #end year calibration period
 
 #Cluster for parallel computing
 
 # stopCluster(my_clust)
 
-n_cores <- 2 #number of cores used for parallel computing
+n_cores <- 5 #number of cores used for parallel computing
 
 #Make cluster for parallel computing
 # my_clust <- makeCluster(n_cores)
@@ -865,6 +865,7 @@ for(i in 1:ncol(temps_all)){
 
 dev.off()
 
+
 #visu_all----
 
 dds_log <- read.table(paste0(base_dir, "R/meltim/melt_calib/dds", ".log"), header = T, sep = "\t")
@@ -1020,6 +1021,7 @@ snows_cal <- snows[min_ind:max_ind, ]
 snows_stat_cal <- snows_stat[min_ind:max_ind, ]
 meteo_date_cal <- meteo_date[min_ind:max_ind]
 
+
 pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
 
 par(mfrow = c(4, 1))
@@ -1042,11 +1044,11 @@ for(i in 1:ncol(snows_cal)){
   lines(snows_cal[, i], col = scales::alpha("black", alpha = 1.0), lwd = 1.7)
   points(snows_stat_cal[, i], pch = 21, bg = scales::alpha("steelblue4", alpha = 0.7), 
          cex = 1.5, col = "steelblue")
-  axis(2, cex = 1.5, mgp=c(3, 0.50, 0), cex.axis = 1.6, tck = -0.02)
+  axis(2, cex = 1.5, mgp=c(3, 0.50, 0), cex.axis = 1.8, tck = -0.02)
   axis(1, at = x_tics, labels = rep("", length(x_tics)), tck = -0.05)
   axis(1, at = x_labs, labels = x_labels, tick = F, mgp=c(3, 0.60, 0), cex.axis = 1.7)
-  mtext(main_plots[i], side= 3, line = 0.3, cex = 1.6, adj = 0.0)
-  mtext("SWE [m]", side= 2, line = 2.7, cex = 1.4, adj = 0.5)
+  mtext(main_plots[i], side= 3, line = 0.3, cex = 1.7, adj = 0.0)
+  mtext("SWE [m]", side= 2, line = 2.7, cex = 1.7, adj = 0.5)
   box()
   if(i == 1){
     legend("topleft", c("obs", "sim."), pch = 19, cex = 1.7, col = c("steelblue4", "black"), bg = "white")

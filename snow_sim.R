@@ -519,6 +519,7 @@ if(F){
 }
 
 for(b in 1:length(block_stas)){
+# for(b in 1:2){
   
   print(paste(Sys.time(),"Snow simulations", "Block:", b, "out of", length(block_stas)))
   
@@ -597,16 +598,20 @@ for(b in 1:length(block_stas)){
       
     }
     
-    swe_sim
+    # swe_sim
+    cbind(swe_sim, sec_sim)
     
   }
   
   if(b == 1){
-    snows_d <- snows
+    snows_d <- snows[, seq(1, length(block_stas[b]:block_ends[b])*2, 2)]
+    sec_d   <- snows[, seq(2, length(block_stas[b]:block_ends[b])*2, 2)]
   }else{
-    snows_d <- cbind(snows_d, snows)
+    snows_d <- cbind(snows_d, snows[, seq(1, length(block_stas[b]:block_ends[b])*2, 2)])
+    sec_d   <- cbind(sec_d,   snows[, seq(2, length(block_stas[b]:block_ends[b])*2, 2)])
   }
   
+  print(ncol(sec_d))
 }  
 
 #first year as warm up to get snow dynamics going
@@ -616,6 +621,7 @@ snows_d <- snows_d[-(1:index_next_1Jan), ]
 temps_d <- temps_d[-(1:index_next_1Jan), ]
 precs_d <- precs_d[-(1:index_next_1Jan), ]
 date_snow <- meteo_date[-(1:index_next_1Jan)]
+sec_d <- sec_d[-(1:index_next_1Jan), ]
 
 #Get grid points inside watershed (calculations with buffer around)
 sim_inside <- !is.na(sp::over(grid_points_d, as(basin, "SpatialPolygons")))
@@ -627,6 +633,7 @@ snows_d <- snows_d[, -points_outside]
 temps_d <- temps_d[, -points_outside]
 precs_d <- precs_d[, -points_outside]
 elevs_d <- elevs_d[-points_outside]
+sec_d   <- sec_d[, -points_outside]
 
 # #Lake and glacier points from EURAC snow cover data
 # ind_rem <- which(is.na(scd_eurac))
@@ -715,6 +722,141 @@ sslo[, which(snow_max > 1.5)] <- NA #remove snow towers
 #Snow volume: trends 30 DMA
 vslo <- sslo * grid_m2
 
+# #SEC: mean average
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- sec_d[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Average mean sec", "Block:", b, "out of", length(block_stas)))
+#   
+#   cmea_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas+1, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "mean") #[m]
+#     
+#   }
+#   
+#   if(b == 1){
+#     cmea <- cmea_block
+#   }else{
+#     cmea <- cbind(cmea, cmea_block)
+#   }
+#   
+# }
+# 
+# cmea[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# #SEC: trends 30DMA
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- sec_d[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Trends 30DMA sec", "Block:", b, "out of", length(block_stas)))
+#   
+#   cslo_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "sens_slope") * 10 #[m/dec]
+#     
+#   }
+#   
+#   if(b == 1){
+#     cslo <- cslo_block
+#   }else{
+#     cslo <- cbind(cslo, cslo_block)
+#   }
+#   
+# }
+# 
+# cslo[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# #SEC change preceding 30 days: mean average
+# sec_diff <- function(sec_in){
+#   
+#   sec_diff <- c(NA, diff(sec_in))
+#   
+#   return(sec_diff)
+#   
+# }
+# 
+# sec_d_dif <- apply(sec_d, 2, sv_diff)
+# 
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- sec_d_dif[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Average mean diff sce ma", "Block:", b, "out of", length(block_stas)))
+#   
+#   cdif_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     snows_calc_ma <- rollapply(data = snows_calc[, i], width = 30,
+#                                FUN = sum_na, align = "right", fill = NA)
+#     day_ana(snows_calc_ma, 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "mean") #[m]
+#     
+#   }
+#   
+#   if(b == 1){
+#     cdif <- cdif_block
+#   }else{
+#     cdif <- cbind(cdif, cdif_block)
+#   }
+#   
+# }
+# 
+# cdif[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# #SEC change preceding 30 days: trend
+# 
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- sec_d_dif[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Trends sec ma", "Block:", b, "out of", length(block_stas)))
+#   
+#   cdis_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     snows_calc_ma <- rollapply(data = snows_calc[, i], width = 30,
+#                                FUN = sum_na, align = "right", fill = NA)
+#     day_ana(snows_calc_ma, 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "sens_slope") * 10 #[m/dec]
+#     
+#   }
+#   
+#   if(b == 1){
+#     cdis <- cdis_block
+#   }else{
+#     cdis <- cbind(cdis, cdis_block)
+#   }
+#   
+# }
+# 
+# cdis[, which(snow_max > 1.5)] <- NA #remove snow towers
+
 #Snow accumulation and melt water outflow
 sv_diff <- function(snow_volume_in){
   
@@ -791,6 +933,159 @@ sdis[, which(snow_max > 1.5)] <- NA #remove snow towers
 #Snow volume diff: trends 30 DMA
 vdis <- sdis * grid_m2
 
+# #Snow volume diff accumulation and melt
+# 
+# f_accu_sel <- function(data_in){
+#   
+#   data_in[which(data_in < 0)] <- 0
+#   
+#   return(data_in)
+#   
+# }
+# f_melt_sel <- function(data_in){
+#   
+#   data_in[which(data_in > 0)] <- 0
+#   
+#   return(data_in)
+#   
+# }
+# 
+# snows_d_dif_acc <- apply(snows_d_dif, 2, f_accu_sel)
+# snows_d_dif_mel <- apply(snows_d_dif, 2, f_melt_sel)
+# 
+# #Snow depth/volume diff accumulation: mean average
+# 
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- snows_d_dif_acc[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Average mean diff accu. swe", "Block:", b, "out of", length(block_stas)))
+#   
+#   sdia_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "mean") #[m]
+#     
+#   }
+#   
+#   if(b == 1){
+#     sdia <- sdia_block
+#   }else{
+#     sdia <- cbind(sdia, sdia_block)
+#   }
+#   
+# }
+# 
+# sdia[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# vdia <- sdia * grid_m2
+# 
+# #Snow depth/volume diff melt: mean average
+# 
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- snows_d_dif_mel[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Average mean diff melt swe", "Block:", b, "out of", length(block_stas)))
+#   
+#   sdim_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = F,
+#             window_width = 30, 
+#             method_ana = "mean") #[m]
+#     
+#   }
+#   
+#   if(b == 1){
+#     sdim <- sdim_block
+#   }else{
+#     sdim <- cbind(sdim, sdim_block)
+#   }
+#   
+# }
+# 
+# sdim[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# vdim <- sdim * grid_m2
+# 
+# #Snow depth/volume diff accumulation: trends 30DMA
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- snows_d_dif_acc[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Trends 30 DMA diff accu. swe", "Block:", b, "out of", length(block_stas)))
+#   
+#   sdias_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = T,
+#             window_width = 30, 
+#             method_ana = "sens_slope") * 10#[m/dec]
+#     
+#   }
+#   
+#   if(b == 1){
+#     sdias <- sdias_block
+#   }else{
+#     sdias <- cbind(sdias, sdias_block)
+#   }
+#   
+# }
+# 
+# sdias[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# vdias <- sdias * grid_m2
+# 
+# #Snow depth/volume diff melt: trends 30DMA
+# for(b in 1:length(block_stas)){
+#   
+#   snows_calc <- snows_d_dif_mel[, block_stas[b]:block_ends[b]]
+#   
+#   print(paste(Sys.time(),"Trends 30 DMA diff melt swe", "Block:", b, "out of", length(block_stas)))
+#   
+#   sdims_block <- foreach(i = 1:ncol(snows_calc), .combine = 'cbind') %dopar% {
+#     
+#     day_ana(snows_calc[, i], 
+#             date = date_snow, 
+#             start_year = sta_yea_bas, 
+#             end_year = end_yea_bas,
+#             break_day = 274,
+#             do_ma = T,
+#             window_width = 30, 
+#             method_ana = "sens_slope") * 10#[m/dec]
+#     
+#   }
+#   
+#   if(b == 1){
+#     sdims <- sdims_block
+#   }else{
+#     sdims <- cbind(sdims, sdims_block)
+#   }
+#   
+# }
+# 
+# sdims[, which(snow_max > 1.5)] <- NA #remove snow towers
+# 
+# vdims <- sdims * grid_m2
+
+
+
+
 #Temperature: mean average
 for(b in 1:length(block_stas)){
 
@@ -866,7 +1161,7 @@ for(b in 1:length(block_stas)){
             end_year = end_yea_bas,
             break_day = 274,
             do_ma = T,
-            window_width = 30,
+            window_width = 14,
             method_ana = "sens_slope") * 10 #[°C/dec]
 
   }
@@ -993,6 +1288,44 @@ sno_vol_basin <- apply(snows_d[,-which(snow_max > 1.5)], 1, sum_na) * 1000 * 100
 
 prec_basin <- apply(precs_d[,-which(snow_max > 1.5)], 1, mea_na) * area_m2 / 1000 #[m³]
 
+#Liquid/Solid precipitation
+temp_thres <- -1
+
+precs_d_sol <- precs_d
+precs_d_liq <- precs_d
+
+for(i in 1:ncol(precs_d)){
+  
+  print(i)
+  
+  temp_ind_sel_1 <- which(temps_d[,i] > temp_thres)
+  temp_ind_sel_2 <- which(temps_d[,i] < temp_thres)
+  
+  precs_d_sol[temp_ind_sel_1, i] <- 0
+  precs_d_liq[temp_ind_sel_2, i] <- 0
+  
+}
+
+prec_basin_sol <- apply(precs_d_sol[,-which(snow_max > 1.5)], 1, mea_na) * area_m2 / 1000 #[m³]
+prec_basin_liq <- apply(precs_d_liq[,-which(snow_max > 1.5)], 1, mea_na) * area_m2 / 1000 #[m³]
+
+rm(precs_d_sol)
+rm(precs_d_liq)
+gc()
+
+#Area available for liquid precipitation
+liq_area <- NULL
+for(i in 1:nrow(temps_d)){
+  
+  print(i)
+  
+  liq_area_sing <- length(which(temps_d[i, ] > temp_thres)) / ncol(temps_d)
+  
+  liq_area <- c(liq_area, liq_area_sing)
+  
+}
+
+
 #elev_ranges----
 
 f_elev_bands <- function(data_in, elev_bands = my_elev_bands, func_aggr = "mean", meta_dat = elevs_d){
@@ -1047,6 +1380,14 @@ vmea_band <- f_elev_bands(data_in = vmea, func_aggr = "sum")
 vslo_band <- f_elev_bands(data_in = vslo, func_aggr = "sum")
 vdif_band <- f_elev_bands(data_in = vdif, func_aggr = "sum")
 vdis_band <- f_elev_bands(data_in = vdis, func_aggr = "sum")
+# vdia_band <- f_elev_bands(data_in = vdia, func_aggr = "sum")
+# vdim_band <- f_elev_bands(data_in = vdim, func_aggr = "sum")
+# vdias_band <- f_elev_bands(data_in = vdias, func_aggr = "sum")
+# vdims_band <- f_elev_bands(data_in = vdims, func_aggr = "sum")
+# cmea_band  <- f_elev_bands(data_in = cmea, func_aggr = "mean")
+# cslo_band  <- f_elev_bands(data_in = cslo, func_aggr = "mean")
+# cdif_band  <- f_elev_bands(data_in = cdif, func_aggr = "mean")
+# cdis_band  <- f_elev_bands(data_in = cdis, func_aggr = "mean")
 
 snows_d_st <- snows_d
 snows_d_st[, which(snow_max > 1.5)] <- NA #remove snow towers
@@ -1103,7 +1444,7 @@ pslo_band_mea <- apply(pslo_band, 2, mea_na)#annual average values
 
 #Plot: Snow variables
 
-plot_snow <- vdis_band #smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band
+plot_snow <- vslo_band #smea_band, sslo_band, vmea_band, vslo_band, vdif_band, vdis_band
 col_zero <- T #color range center at zero
 
 x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)

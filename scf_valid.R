@@ -9,7 +9,7 @@
 
 #Select validation period
 sta_date <- as.POSIXct(strptime("2002-08-01", "%Y-%m-%d", tz = "UTC"))
-end_date <- as.POSIXct(strptime("2012-07-31", "%Y-%m-%d", tz = "UTC"))
+end_date <- as.POSIXct(strptime("2014-07-31", "%Y-%m-%d", tz = "UTC"))
 date_vali <- as.Date(seq(sta_date, end_date, by = "day"))
 
 #calc_eurac----
