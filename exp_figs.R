@@ -139,7 +139,10 @@ dev.off()
 
 dem = raster(paste0(data_dir, "basin_data/eu_dem/processed/eu_dem_1000.tif"))
 
-pdf(paste0(base_dir,"R/figs_exp/map_ins_raw.pdf"), width = 10, height = 6)
+# pdf(paste0(base_dir,"R/figs_exp/map_ins_raw.pdf"), width = 10, height = 6)
+# tiff(paste0(base_dir,"R/figs_exp/map_ins_raw.tiff"), width = 10, height = 6,
+#      units = "in", res = 800)
+png(paste0(base_dir,"R/figs_exp/map_ins_raw.png"), width = 1000, height = 600)
 
 #Create polygons for extends overview maps
 boxes <- rbind(c(5.0, 40.0,  5.0, 55.0,  10.0, 55.0,  10.0, 40.0,  5.0, 40.0),
@@ -157,8 +160,8 @@ polys <- SpatialPolygons(list(
 ))
 
 
-plot(dem, col = colorRampPalette(c("grey85", "black"))(200), axes = F, legend = F, box = F)
-plot(polys[2], col = alpha("white", alpha = 0.1), border = "red3", add = T, lwd = 3)
+plot(dem, col = alpha("grey35", alpha = 1.0), axes = F, legend = F, box = F)
+plot(polys[2], col = alpha("grey35", alpha = 1.0), border = "red3", add = T, lwd = 4)
 
 dev.off()
 
@@ -173,14 +176,45 @@ dem = raster(paste0(data_dir, "basin_data/eu_dem/processed/eu_dem_500.tif"))
 #Load basin boundaries
 basins <-  rgdal::readOGR(dsn = paste0(data_dir, "basin_data/EZG_Schweiz_BAFU/ezg_kombiniert.shp"), encoding = "UTF8")
 basin_base <- spTransform(basins[basins@data$Ort == "Basel, Rheinhalle",], CRS = crs(dem, asText = T))
+# basin_unte <- spTransform(basins[basins@data$Ort == "Untersiggenthal, Stilli",], CRS = crs(dem, asText = T))
+# basin_brug <- spTransform(basins[basins@data$Ort == "Brugg",], CRS = crs(dem, asText = T))
+# basin_bern <- spTransform(basins[basins@data$Ort == "Bern, SchÃ¶nau",], CRS = crs(dem, asText = T))
+# basin_neuh <- spTransform(basins[basins@data$Ort == "Neuhausen, FlurlingerbrÃ¼cke",], CRS = crs(dem, asText = T))
+# basin_reki <- spTransform(basins[basins@data$Ort == "Rekingen",], CRS = crs(dem, asText = T))
+# basin_diep <- spTransform(basins[basins@data$Ort == "Diepoldsau, RietbrÃ¼cke",], CRS = crs(dem, asText = T))
 
 #corp DEM sub-basin area
-dem_cro <- raster::crop(dem, extent(basin_base))
-dem_sub <- mask(dem_cro, basin_base)
+dem_cro_base <- raster::crop(dem, extent(basin_base))
+dem_sub_base <- mask(dem_cro_base, basin_base)
+# dem_cro_unte <- raster::crop(dem, extent(basin_unte))
+# dem_sub_unte <- mask(dem_cro_unte, basin_unte)
+# dem_cro_brug <- raster::crop(dem, extent(basin_brug))
+# dem_sub_brug <- mask(dem_cro_brug, basin_brug)
+# dem_cro_bern <- raster::crop(dem, extent(basin_bern))
+# dem_sub_bern <- mask(dem_cro_bern, basin_bern)
+# dem_cro_reki <- raster::crop(dem, extent(basin_reki))
+# dem_sub_reki <- mask(dem_cro_reki, basin_reki)
+# dem_cro_neuh <- raster::crop(dem, extent(basin_neuh))
+# dem_sub_neuh <- mask(dem_cro_neuh, basin_neuh)
+# dem_cro_diep <- raster::crop(dem, extent(basin_diep))
+# dem_sub_diep <- mask(dem_cro_diep, basin_diep)
+
 
 #get elevations of cells cropped dem
-dem_ele_NA <- dem_sub@data@values
-dem_ele <- dem_ele_NA[!is.na(dem_ele_NA)]
+dem_ele_NA_base <- dem_sub_base@data@values
+dem_ele_base <- dem_ele_NA_base[!is.na(dem_ele_NA_base)]
+# dem_ele_NA_unte <- dem_sub_unte@data@values
+# dem_ele_unte <- dem_ele_NA_unte[!is.na(dem_ele_NA_unte)]
+# dem_ele_NA_brug <- dem_sub_brug@data@values
+# dem_ele_brug <- dem_ele_NA_brug[!is.na(dem_ele_NA_brug)]
+# dem_ele_NA_bern <- dem_sub_bern@data@values
+# dem_ele_bern <- dem_ele_NA_bern[!is.na(dem_ele_NA_bern)]
+# dem_ele_NA_reki <- dem_sub_reki@data@values
+# dem_ele_reki <- dem_ele_NA_reki[!is.na(dem_ele_NA_reki)]
+# dem_ele_NA_neuh <- dem_sub_neuh@data@values
+# dem_ele_neuh <- dem_ele_NA_neuh[!is.na(dem_ele_NA_neuh)]
+# dem_ele_NA_diep <- dem_sub_diep@data@values
+# dem_ele_diep <- dem_ele_NA_diep[!is.na(dem_ele_NA_diep)]
 
 hist_breaks <- seq(4000, 200, -50)
 
@@ -197,7 +231,7 @@ areal_perc <- c(round(length(which(dem_ele < 1000)) / length(dem_ele) * 100, dig
                 round(length(which(dem_ele > 2000 & dem_ele < 3000)) / length(dem_ele) * 100, digits = 2),
                 round(length(which(dem_ele > 3000)) / length(dem_ele) * 100, digits = 2))
 
-hist(dem_ele, breaks = hist_breaks, axes = F, ylab = "", xlab = "", main = "",
+hist(dem_ele_base, breaks = hist_breaks, axes = F, ylab = "", xlab = "", main = "",
      col = alpha("darkgoldenrod4", alpha = 0.8), yaxs = "i", ylim = c(0,16000), xlim = c(4000, 0))
 # rect(xleft =  6000, xright = -300, ytop = 150000, ybottom = 0 ,col = alpha("grey", alpha = 0.30), border = NA)
 box()
@@ -366,11 +400,11 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
-  axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.4)
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
+  axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.5)
   if(do_head){
-    mtext("a) Snow depth raster", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
-    mtext("[cm]", side= 3, line = 0.3, cex = 1.2, adj = 1.0)
+    mtext("a) Snow depth raster", side= 3, line = 0.5, cex = 1.6, adj = 0.0)
+    mtext("[cm]", side= 3, line = 0.3, cex = 1.4, adj = 1.0)
     # legend("topleft", c("1959-1988", "1989-2018"), pch = 19, cex = 1.0, col = c(col_1, col_2), bg = "white")
   }
   box()
@@ -378,7 +412,7 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   par(mar = c(1.7, 0.2, 0.5, 1.7))
   
   alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
-  axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.3)
+  axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.4)
   # mtext("cm", side = 3, line = 0.2, cex = 1.0)
   box()
   
@@ -405,15 +439,15 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   lines(sno_mea_2, col = col_2, lwd = my_lwd)
   # abline(v = doy_max_1, col = col_1, lty = "dashed", lwd = lwd_ab)
   # abline(v = doy_max_2, col = col_2,  lty = "dashed", lwd = lwd_ab)
-  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.4)
+  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.5)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
   if(do_head){
-    mtext("b) Snow depth mean", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
-    mtext("[cm]", side= 3, line = 0.2, cex = 1.2, adj = 1.0)
-    legend("topleft", c("1958-1988", "1988-2018"), pch = 19, cex = 1.1, col = c(col_1, col_2), bg = "white")
+    mtext("b) Snow depth mean", side= 3, line = 0.5, cex = 1.6, adj = 0.0)
+    mtext("[cm]", side= 3, line = 0.3, cex = 1.4, adj = 1.0)
+    legend("topright", c("1958-1988", "1988-2018"), pch = 19, cex = 1.25, col = c(col_1, col_2), bg = "white")
   }
   box(lwd = 0.7)
   
@@ -430,14 +464,14 @@ sing_snow <- function(stat_sel, do_head = F, sta_yea = 1958, bre_yea = 1988, end
   abline(v = x_axis_tic, col = "grey55",  lty = "dashed", lwd = 0.7)
   lines(diff_mea_1, col = col_1, lwd = my_lwd)
   lines(diff_mea_2, col = col_2, lwd = my_lwd)
-  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.4)
+  axis(2, mgp=c(3, 0.2, 0), tck = -0.03, cex.axis = 1.5)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.08)#plot ticks
   axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
-       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.3)#plot labels
+       col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
   if(do_head){
-    mtext("c) Acc./Melt rate", side= 3, line = 0.5, cex = 1.4, adj = 0.0)
-    mtext(expression(paste("[cm ","day"^"-1", "]")), side= 3, line = 0.2, cex = 1.2, adj = 1.0)
+    mtext("c) Acc./Melt rate", side= 3, line = 0.5, cex = 1.6, adj = 0.0)
+    mtext(expression(paste("[cm ","day"^"-1", "]")), side= 3, line = 0.15, cex = 1.4, adj = 1.0)
   }
   # abline(v = x_axis_tic, col = "grey55", lty = "dashed", lwd = 0.8)
   # grid(nx = 0, ny = 5, lty = "dashed", col = "grey55", lwd = 0.8)
@@ -451,7 +485,7 @@ layout(matrix(c(46, rep(45, 11),
                 rep(c(46, 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43), 9), 
                 rep(c(46, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44), 9)
 ),
-12, 28), widths=c(), heights=c(0.2, rep(1, 10)))
+12, 28), widths=c(1.2, rep(1, 27)), heights=c(0.2, rep(1, 10)))
 
 x_axis_lab <- c(15,46,74,105,135,166,196,227,258,288,319,349)
 x_axis_tic <- c(   46,74,105,135,166,196,227,258,288,319,349)-15
@@ -469,21 +503,32 @@ sing_snow("ELM")
 sing_snow("SMA")
 
 #Station names
-cex_header <- 1.2
+cex_header <- 1.4
 par(mar = c(0,0,0,0))
 
 plot(1:100, 1:100, axes = F, type = "n", xlab = "", ylab = "")
-mtext("WFJ 2691 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.974, outer = T)
-mtext("ARO 1878 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.878, outer = T)
-mtext("SIA 1804 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.781, outer = T)
-mtext("GRC 1606 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.685, outer = T)
-mtext("DAV 1594 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.589, outer = T)
-mtext("ANT 1438 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.493, outer = T)
-mtext("SMM 1386 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.397, outer = T)
-mtext("ABO 1322 m",  side = 2, line = -2.6, cex = cex_header, adj = 0.300, outer = T)
-mtext("DIS 1197 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.208, outer = T)
-mtext("ELM 957 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.112, outer = T)
-mtext("SMA 555 m",   side = 2, line = -2.6, cex = cex_header, adj = 0.018, outer = T)
+mtext("WFJ",  side = 2, line = -1.8, cex = cex_header, adj = 0.958, outer = T)
+mtext("2691 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.967, outer = T)
+mtext("ARO",  side = 2, line = -1.8, cex = cex_header, adj = 0.865, outer = T)
+mtext("1878 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.871, outer = T)
+mtext("SIA",  side = 2, line = -1.8, cex = cex_header, adj = 0.771, outer = T)
+mtext("1804 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.776, outer = T)
+mtext("GRC",  side = 2, line = -1.8, cex = cex_header, adj = 0.679, outer = T)
+mtext("1606 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.682, outer = T)
+mtext("DAV",  side = 2, line = -1.8, cex = cex_header, adj = 0.588, outer = T)
+mtext("1594 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.588, outer = T)
+mtext("ANT",  side = 2, line = -1.8, cex = cex_header, adj = 0.494, outer = T)
+mtext("1438 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.493, outer = T)
+mtext("SMM",  side = 2, line = -1.8, cex = cex_header, adj = 0.400, outer = T)
+mtext("1386 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.397, outer = T)
+mtext("ABO",  side = 2, line = -1.8, cex = cex_header, adj = 0.305, outer = T)
+mtext("1322 m",  side = 2, line = -3.5, cex = cex_header, adj = 0.303, outer = T)
+mtext("DIS",   side = 2, line = -1.8, cex = cex_header, adj = 0.214, outer = T)
+mtext("1197 m",   side = 2, line = -3.5, cex = cex_header, adj = 0.209, outer = T)
+mtext("ELM",   side = 2, line = -1.8, cex = cex_header, adj = 0.120, outer = T)
+mtext("957 m",   side = 2, line = -3.5, cex = cex_header, adj = 0.117, outer = T)
+mtext("SMA",   side = 2, line = -1.8, cex = cex_header, adj = 0.031, outer = T)
+mtext("555 m",   side = 2, line = -3.5, cex = cex_header, adj = 0.027, outer = T)
 
 #Analytical method
 
@@ -504,6 +549,7 @@ plot(1:100, 1:100, axes = F, type = "n", xlab = "", ylab = "")
 # points(3.2, 65, pch = 19, col = col_1)
 
 dev.off()
+
 
 #disc_perc----
 
@@ -556,7 +602,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   ind_break_1 <- (year_1 - year_1) + 1
   ind_break_2 <- (year_2 - year_1) + 1
   ind_break_3 <- (year_3 - year_1) + 1
-  ind_break_4 <- (year_4 - year_1) + 1
+  ind_break_4 <- (year_4 - year_1) + 0
   
   #Calculation percentile graph
   jan_cols <- 1:31
@@ -572,7 +618,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   nov_cols <- 305:334
   dec_cols <- 335:365
   
-  month_cols <- list(jan_cols, feb_cols, mar_cols, apr_cols, may_cols, jun_cols, jul_cols, aug_cols, sep_cols, oct_cols, nov_cols, dec_cols)
+  month_cols <- list(oct_cols, nov_cols, dec_cols, jan_cols, feb_cols, mar_cols, apr_cols, may_cols, jun_cols, jul_cols, aug_cols, sep_cols)
   
   f_quants_all <- function(data_in){
     
@@ -609,10 +655,11 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   
   cols_min <- colorRampPalette(c("darkred", "firebrick4", "orangered4", "gold3", "grey98"))(n_min)
   cols_max <- colorRampPalette(c("grey98", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
-  my_col <- colorRampPalette(c(cols_min, cols_max))(200)
+  # my_col <- colorRampPalette(c(cols_min, cols_max))(200)
   # my_bre <- seq(min_na(qdif[, ]), max_na(qdif[, ]), length.out = 201)
   my_bre <- c(seq(-max_na(abs(qdif)), 0, length.out = n_min),
               seq(0, max_na(abs(qdif)), length.out = n_max+1))
+  my_col <- colorRampPalette(c(cols_min, cols_max))(length(my_bre)-1)
 
   # plot(1:n_max, 1:n_max, pch = 19, cex = 2, col = cols_max)
   # plot(1:n_min, 1:n_min, pch = 19, cex = 2, col = cols_min)
@@ -626,7 +673,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
         ylab = "", xlab = "", axes = F)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.05)#plot ticks
-  axis(1, at = x_axis_lab, c("J","F","M","A","M","J","J","A","S","O", "N", "D"), tick = FALSE,
+  axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
        col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.5)#plot labels
   axis(2, mgp=c(3, 0.25, 0), tck = -0.025, cex.axis = 1.5)
   mtext("Prob. level", side = 2, line = 1.7, cex = 1.25)
@@ -635,7 +682,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   
   box()
   
-  par(mar = c(2.0, 0.2, 2.5, 3.5))
+  par(mar = c(1.6, 0.2, 2.0, 3.5))
   
   alptempr::image_scale(as.matrix(qdif), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
   axis(4, mgp=c(3, 0.45, 0), tck = -0.1, cex.axis = 1.5)
@@ -701,7 +748,8 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   data_day <- ord_day(data_in = data_in,
                       date = date_in,
                       start_y = year_1,
-                      end_y = year_2)
+                      end_y = year_2,
+                      break_day = 274)
   
   #Preparation Raster graph
   x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
@@ -736,7 +784,7 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
         ylab = "", xlab = "", axes = F)
   axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
        col = "black", col.axis = "black", tck = -0.05)#plot ticks
-  axis(1, at = x_axis_lab, c("J","F","M","A","M","J","J","A","S","O", "N", "D"), tick = FALSE,
+  axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
        col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.5)#plot labels
   axis(2, mgp=c(3, 0.15, 0), tck = -0.025, cex.axis = 1.5)
   mtext("Year", side = 2, line = 1.7, cex = 1.25)
@@ -746,7 +794,7 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   
   box()
   
-  par(mar = c(2.0, 0.2, 2.0, 3.5))
+  par(mar = c(1.6, 0.2, 2.0, 3.5))
   
   alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
   axis(4, mgp=c(3, 0.45, 0), tck = -0.1, cex.axis = 1.5)
@@ -1538,6 +1586,7 @@ melt_plot <- function(i, head_ind = "", do_labs = F){
   mtext(expression(paste("P [10"^"6", "m"^"3"," 3day"^"-1", "]")), side = 2, line = 1.1, adj = 1.0, cex = 0.75)
   box()
   
+  rain_data_plot_sol[i, 145] / rain_data_plot[i, 145]
   
   #Snow volume basin
   par(mar = c(1.3, 2.8, 1.6, 2.8))
@@ -2754,8 +2803,8 @@ dev.off()
 grdc_base_full <- read_grdc(paste0(grdc_dir, "6935051_Q_Day.Cmd.txt"))
 
 #clip 1951-2014
-sta_ind <- which(grdc_base$date == "1951-01-01")
-end_ind <- which(grdc_base$date == "2014-12-31")
+sta_ind <- which(grdc_base_full$date == "1951-01-01")
+end_ind <- which(grdc_base_full$date == "2014-12-31")
 
 grdc_base <- grdc_base_full[sta_ind:end_ind, ]
 
@@ -2781,11 +2830,14 @@ sno_vol_dif_mel_ma_14 <- rollapply(data = snow_vol_dif_mel, width = 14,
 prec_basin_ms_3 <- rollapply(data = prec_basin, width = 3,
                              FUN = sum_na, align = "right", fill = NA)
 
+prec_basin_liq_ms_3 <- rollapply(data = prec_basin_liq, width = 3,
+                             FUN = sum_na, align = "right", fill = NA)
 
 melt_peak <- sno_vol_dif_mel_ma_14[pot_peaks_base[, 3]] * -1 #melt is positive
+prec_peak_liq <- prec_basin_liq_ms_3[pot_peaks_base[, 3]]
 prec_peak <- prec_basin_ms_3[pot_peaks_base[, 3]]
 
-peak_frac_mel <- melt_peak / (melt_peak + prec_peak)
+peak_frac_mel <- melt_peak / (melt_peak + prec_peak_liq)
 
 mel_thres_1 <- 0.25
 mel_thres_2 <- 0.50
@@ -2847,47 +2899,148 @@ box()
 dev.off()
 
 
+firs_len; firs_len - firs_len_mel_1; firs_len_mel_1 - firs_len_mel_2; firs_len_mel_2 - firs_len_mel_3; firs_len_mel_3
+seco_len; seco_len - seco_len_mel_1; seco_len_mel_1 - seco_len_mel_2; seco_len_mel_2 - seco_len_mel_3; seco_len_mel_3 
 
-firs_len; firs_len_mel_1; firs_len_mel_2; firs_len_mel_3
-+seco_len; seco_len_mel_1; seco_len_mel_2; seco_len_mel_3 
-
-firs_len_fj; firs_len_mel_1_fj; firs_len_mel_2_fj; firs_len_mel_3_fj
-seco_len_fj; seco_len_mel_1_fj; seco_len_mel_2_fj; seco_len_mel_3_fj 
-
+firs_len_fj; firs_len_fj - firs_len_mel_1_fj; firs_len_mel_1_fj - firs_len_mel_2_fj; firs_len_mel_2_fj - firs_len_mel_3_fj; firs_len_mel_3_fj
+seco_len_fj; seco_len_fj - seco_len_mel_1_fj; seco_len_mel_1_fj - seco_len_mel_2_fj; seco_len_mel_2_fj - seco_len_mel_3_fj; seco_len_mel_3_fj 
 
 
-peaks_ind_pre <- which(peak_frac_mel < mel_thres)
+#Simple calculation protective effect
+prec_basin_day <- ord_day(data_in = prec_basin_ms_3,
+                          date = date_snow,
+                          start_y = 1951,
+                          end_y = 2014,
+                          break_day = 274)
 
-plot(grdc_base$value[pot_peaks_base[peaks_ind_pre, 3]], type = "l")
+prec_basin_liq_day <- ord_day(data_in = prec_basin_liq_ms_3,
+                          date = date_snow,
+                          start_y = 1951,
+                          end_y = 2014,
+                          break_day = 274)
 
-plot(prec_basin_ms_3[pot_peaks_base[peaks_ind_pre, 3]] / 1000000, type = "l")
+prec_basin_max <- apply(prec_basin_day[, 1:182], 1, max_na)
+prec_basin_liq_max <- apply(prec_basin_liq_day[, 1:182], 1, max_na)
 
-peaks_pre_slo  <- sens_slo(prec_basin_ms_3[pot_peaks_base[peaks_ind_pre, 3]]) / 1000000 * 10 # hm?/decade
-peaks_pre_int  <- as.numeric(zyp.trend.vector(prec_basin_ms_3[pot_peaks_base[peaks_ind_pre, 3]], 
-                                          x = 1:length(prec_basin_ms_3[pot_peaks_base[peaks_ind_pre, 3]]),
-                                          method = "zhang", conf.intervals = F)[11])
-peaks_pre_sig <- as.numeric(zyp.trend.vector(grdc_base$value[pot_peaks_base[peaks_ind_pre, 3]], 
-                                             x = 1:length(grdc_base$value[pot_peaks_base[peaks_ind_pre, 3]]),
-                                         method = "zhang", conf.intervals = F)[6])
+prot_eff <- (1-(prec_basin_liq_max / prec_basin_max))*100
 
-######
-#Only use peaks between February and June....
-###
-
-peaks_ind_fj <- which(as.numeric(format(grdc_base$date[pot_peaks_base[, 3]], "%m")) %in% 2:6)
-
-length(peaks_ind_fj)
-plot(peak_frac_mel[peak_mel_ind])
+hist(prot_eff)
+mea_na(prot_eff)
 
 
-plot(melt_peak / (melt_peak + prec_peak))
-plot(prec_peak)
+#reservoirs----
 
-abline(h = 0)
+#High Rhine reservoirs
+#Wildenhahn und Klaholz 1996: Gro?e Speicherseen im Einzugsgebiet des Rheins, Internationale Kommission fur die Hydrologie des Rheingebietes (KHR)
+# https://www.chr-khr.org/de/veroffentlichung/grosse-speicherseen-im-einzugsgebiet-des-rheins?position=16&list=zjXE9vdtnkjt146rdN7VhvwPTUHgowCdFNWGTSyOXtU
+
+
+#Vorderrhein
+name_vr <- c("Cumera", "Nalps", "Santa Maria", "Runcahez", "Zervreila", "Egschi")
+volu_vr <- c(40.80, 44.50, 67.00, 0.44, 100.00, 0.40)
+year_vr <- c(1966, 1962, 1968, 1961, 1957, 1949)
+rese_vr <- cbind(name_vr, volu_vr, year_vr)
+
+#Hinterrehin
+name_hr <- c("Surner", "Valle di Lei", "B?reburg", "Marmorera", "Davoser See", "Solis", "Isel")
+volu_hr <- c(18.30, 197.00, 1.00, 60.00, 11.30, 1.46, 0.3) 
+year_hr <- c(1962, 1961, 1960, 1954, 1925, 1985, 1969)
+rese_hr <- cbind(name_hr, volu_hr, year_hr)
+
+#Tamina
+name_ta <- c("Gigerwald", "Mapprag")
+volu_ta <- c(33.40, 5.10)
+year_ta <- c(1976, 1976)
+rese_ta <- cbind(name_ta, volu_ta, year_ta)
+
+volu_tot <- sum_na(volu_vr) + sum_na(volu_hr) + sum_na(volu_ta)
+
+grdc_data_diep <- read_grdc(paste0(grdc_dir, "6935500_Q_Day.Cmd.txt"))
+
+dis_diep_day <- ord_day(data_in = grdc_data_diep$value,
+                        date = grdc_data_diep$date,
+                        start_y = 1927,
+                        end_y = 2016)
+
+dis_diep_ann <- apply(dis_diep_day, 1, sum_na)
+dis_diep_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm³
+
+volu_tot / dis_diep_tot * 100
+
+
+#Thur
+name_tu <- c("Seealpsee")
+volu_tu <- c(0.60)
+year_tu <- c(1905)
+rese_tu <- cbind(name_tu, volu_tu, year_tu)
+
+#Aare
+name_aa <- c("Sanetsch", "Amensee", "Rossiniere", "Lac d'Hogrin", "Lessoc", "Montsalvens", "Rossens",  "Lac de Perolles",
+             "Schiffenen", "Oberaar", "Tr?btensee", "Totensee", "Grimsel", "Raetherichboden", "Gelmer", "Mattenalp", "Engstlensee",
+             "Wohlensee", "Stausee Niederried")
+volu_aa <- c(2.70, 10.30, 1.70, 52.10, 0.75, 11.00, 180.00, 0.30, 35.50, 56.00, 1.00, 2.50, 98.70, 25.00, 13.40, 2.00, 2.00, 1.60, 0.40)
+year_aa <- c(1965, 1942, 1972, 1968, 1973, 1920, 1947, 1870, 1963, 1953, 1950, 1950, 1932, 1950, 1929, 1950, 1961, 1920, 1913)
+rese_aa <- cbind(name_aa, volu_aa, year_aa)
+
+#Reuss
+name_re <- c("Lucendro", "Oberalpsee", "G?scheneralpsee", "Schl?ttli (Seglis)", "Bannalpsee", "Lungernsee", "Wichelsee")
+volu_re <- c(25.00, 0.83, 75.00, 0.35, 1.63, 50.00, 0.38)
+year_re <- c(1947, 1963, 1960, 1965, 1976, 1921, 1957)
+rese_re <- cbind(name_re, volu_re, year_re)
+
+#Limmat
+name_li <- c("Limmern", "Garichte", "Kloental", "Chapfensee", "Murgtal", "W?gitall/Schr?h", "Rempen", "Sihlsee", "Wettingen")
+volu_li <- c(92.00, 2.90, 39.80, 0.50, 1.20, 80.30, 0.36, 91.80, 6.00)
+year_li <- c(1963, 1931, 1910, 1948, 1925, 1924, 1924, 1936, 1933)
+rese_li <- cbind(name_li, volu_li, year_li)
+
+volu_tot <- sum_na(volu_aa) + sum_na(volu_re) + sum_na(volu_li)
+
+grdc_data_unte <- read_grdc(paste0(grdc_dir, "6935300_Q_Day.Cmd.txt"))
+
+dis_unte_day <- ord_day(data_in = grdc_data_unte$value,
+                        date = grdc_data_unte$date,
+                        start_y = 1927,
+                        end_y = 2016)
+
+dis_unte_ann <- apply(dis_diep_day, 1, sum_na)
+dis_unte_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm³
+
+volu_tot / dis_diep_tot * 100
+
+
+
+#All resevoirs
+rese_all_ <- rbind(rese_aa, rese_bo, rese_br, rese_hr, rese_il, 
+                  rese_li, rese_or, rese_re, rese_ta, rese_tu, rese_vr)
+reses <- data.frame(name = rese_all[, 1],
+                    volu = as.numeric(rese_all[, 2]),
+                    year = as.numeric(rese_all[, 3]))
+
+reses_agg <- aggregate(reses$volu, by = list(years = reses$year), FUN = sum)
+reses_agg$cum <- cumsum(reses_agg$x)
+
+perc_vol <- c(
+  round(reses_agg$cum[which(reses_agg$years == 1929)] / max(cumsum(reses_agg$x)), 2)*100,
+  round(reses_agg$cum[which(reses_agg$years == 1936)] / max(cumsum(reses_agg$x)), 2)*100,
+  round(reses_agg$cum[which(reses_agg$years == 1950)] / max(cumsum(reses_agg$x)), 2)*100,
+  round(reses_agg$cum[which(reses_agg$years == 1960)] / max(cumsum(reses_agg$x)), 2)*100,
+  round(reses_agg$cum[which(reses_agg$years == 1969)] / max(cumsum(reses_agg$x)), 2)*100
+)
+
+tota_vol <- c(
+  reses_agg$cum[which(reses_agg$years == 1929)],
+  reses_agg$cum[which(reses_agg$years == 1936)],
+  reses_agg$cum[which(reses_agg$years == 1950)],
+  reses_agg$cum[which(reses_agg$years == 1960)],
+  reses_agg$cum[which(reses_agg$years == 1969)]
+)
 
 
 
 
+
+#liq_sol----
 
 liq_frac_prec <- prec_basin_liq / prec_basin
 

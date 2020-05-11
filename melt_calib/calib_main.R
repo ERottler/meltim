@@ -1059,8 +1059,21 @@ for(i in 1:ncol(snows_cal)){
 
 dev.off()
 
+nrmse_all <- NULL
+pbias_all <- NULL
+for(i in 1:ncol(snows_cal)){
+  
+  nrmse_all <- c(nrmse_all, nrmse(snows_cal[, i], snows_stat_cal[, i], na.rm = T))
+  pbias_all <- c(pbias_all, pbias(snows_cal[, i], snows_stat_cal[, i], na.rm = T))
+  
+}
 
 
+mean(nrmse_all)
+mean(pbias_all)
+
+
+nrmse(snows_cal[, i], snows_stat_cal[, i], na.rm = T)
 
 plot(meteo_date, swe_all[, 1])
 summary(swe_all)
