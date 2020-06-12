@@ -559,6 +559,9 @@ axis(4, mgp=c(3, 0.45, 0), tck = -0.1, cex.axis = 1.5)
 box()
 
 
+scd_nas <- which(is.na(scd_dif))
+plot(elevs_d[-scd_nas], scd_dif[-scd_nas], pch = 19, col = alpha("black", alpha = 0.2))
+
 
 
   par(mfrow = c(1,1))

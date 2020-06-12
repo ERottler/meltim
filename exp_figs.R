@@ -316,7 +316,11 @@ colnames(snow_all) <- stat_col
 
 #Plot observational stations
 
-pdf(paste0(base_dir,"R/figs_exp/snow_stats.pdf"), width = 12, height = 14.5)
+# pdf(paste0(base_dir,"R/figs_exp/snow_stats.pdf"), width = 12, height = 14.5)
+# png(paste0(base_dir,"R/figs_exp/snow_stats.png"), width = 12, height = 14.5, 
+#     units = "in", res = 300)
+tiff(paste0(base_dir,"R/figs_exp/snow_stats.tiff"), width = 12, height = 14.5, 
+    units = "in", res = 300)
 
 par(family = "serif")
 
@@ -561,9 +565,11 @@ grdc_data_neuh <- read_grdc(paste0(grdc_dir, "6935055_Q_Day.Cmd.txt"))
 grdc_data_bern <- read_grdc(paste0(grdc_dir, "6935020_Q_Day.Cmd.txt"))
 grdc_data_diep <- read_grdc(paste0(grdc_dir, "6935500_Q_Day.Cmd.txt"))
 
-pdf(paste0(base_dir,"R/figs_exp/disc_perc.pdf"), width = 12, height = 8)
-# tiff("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/disc_perc.tiff", width = 12, height = 8,
-#      units = "in", res = 800)
+# pdf(paste0(base_dir,"R/figs_exp/disc_perc.pdf"), width = 12, height = 8)
+tiff(paste0(base_dir,"R/figs_exp/disc_perc.tiff"), width = 12, height = 8,
+     units = "in", res = 300)
+# png(paste0(base_dir,"R/figs_exp/disc_perc.png"), width = 12, height = 8,
+#     units = "in", res = 300)
 
 layout(matrix(c(rep(c(15, 3, 7, 11), 4),
                 rep(c(1, 3, 7, 11), 3),
@@ -584,10 +590,10 @@ layout(matrix(c(rep(c(15, 3, 7, 11), 4),
 # yea_cla_4 <- 2016
 
 
-sta_yea_cla <- 1917
+sta_yea_cla <- 1919
 yea_cla_1 <- sta_yea_cla
-yea_cla_2 <- 1966
-yea_cla_3 <- 1967
+yea_cla_2 <- 1967
+yea_cla_3 <- 1968
 yea_cla_4 <- 2016
 
 perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_2 = yea_cla_2,
@@ -723,7 +729,11 @@ dev.off()
 
 #disc_rast----
 
-pdf(paste0(base_dir,"R/figs_exp/disc_rast.pdf"), width = 12, height = 8)
+# pdf(paste0(base_dir,"R/figs_exp/disc_rast.pdf"), width = 12, height = 8)
+tiff(paste0(base_dir,"R/figs_exp/disc_rast.tiff"), width = 12, height = 8,
+     units = "in", res = 300)
+# png(paste0(base_dir,"R/figs_exp/disc_rast.png"), width = 12, height = 8,
+#     units = "in", res = 300)
 
 layout(matrix(c(rep(c(15, 3, 7, 11), 4),
                 rep(c(1, 3, 7, 11), 3),
@@ -735,10 +745,10 @@ layout(matrix(c(rep(c(15, 3, 7, 11), 4),
 ),
 4, 16), widths=c(), heights=c())
 
-sta_yea_cla <- 1927
+sta_yea_cla <- 1919
 yea_cla_1 <- sta_yea_cla
-yea_cla_2 <- 1966
-yea_cla_3 <- 1977
+yea_cla_2 <- 1967
+yea_cla_3 <- 1968
 yea_cla_4 <- 2016
 
 
@@ -777,7 +787,7 @@ raster_plot <- function(data_in, date_in, main_in = "", year_1  = yea_cla_1, yea
   par(family = "serif")
   
   image(x = 1:ncol(data_day),
-        y = 1927:2016,
+        y = year_1:year_2,
         z = t(data_day),
         col = cols_hydro,
         breaks = breaks_hydro,
@@ -901,9 +911,12 @@ dev.off()
 
 #snow_simu----
 
-pdf(paste0(base_dir,"R/figs_exp/snow_simu.pdf"), width = 12, height = 6)
+# pdf(paste0(base_dir,"R/figs_exp/snow_simu.pdf"), width = 12, height = 6)
 # tiff(paste0(base_dir,"R/figs_exp/snow_simu.tiff"), width = 12, height = 6,
-#      units = "in", res = 800)
+#      units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/snow_simu.png"), width = 12, height = 6,
+    units = "in", res = 300)
+
 
 layout(matrix(c(rep(c(1, 5, 9), 8), 2, 6, 10,
                 rep(c(3, 7, 11), 8), 4, 8, 12),
@@ -1481,7 +1494,11 @@ for (i in 1:ncol(svolu_d_band)) {
 
 #Export plot
 
-pdf(paste0(base_dir,"R/figs_exp/basin_flood.pdf"), width = 8, height = 4*2.6)
+# pdf(paste0(base_dir,"R/figs_exp/basin_flood.pdf"), width = 8, height = 4*2.6)
+# tiff(paste0(base_dir,"R/figs_exp/basin_flood.tiff"), width = 8, height = 4*2.6,
+#      units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/basin_flood.png"), width = 8, height = 4*2.6,
+    units = "in", res = 300)
 
 melt_plot <- function(i, head_ind = "", do_labs = F){
   
@@ -1744,7 +1761,11 @@ dev.off()
 
 #calib_res----
 
-pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
+# pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
+# png(paste0(base_dir,"R/figs_exp/calib_res.png"), width = 16, height = 4*2.5,
+#     units = "in", res = 300)
+tiff(paste0(base_dir,"R/figs_exp/calib_res.tiff"), width = 16, height = 4*2.5,
+     units = "in", res = 300)
 
 par(mfrow = c(4, 1))
 par(mar = c(2, 5.5, 2.7, 0.5))
@@ -1887,9 +1908,11 @@ cols_spat_eur <- foreach(i = 1:length(scd_eurac_ann), .combine = 'cbind') %dopar
 }
 
 
-pdf(paste0(base_dir,"R/figs_exp/scd_maps.pdf"), width = 16, height = 3.2)
-# tiff(paste0(base_dir,"R/figs_exp/scd_maps.tiff"), width = 16, height = 3.5,
-#      units = "in", res = 800)
+# pdf(paste0(base_dir,"R/figs_exp/scd_maps.pdf"), width = 16, height = 3.2)
+tiff(paste0(base_dir,"R/figs_exp/scd_maps.tiff"), width = 16, height = 3.2,
+     units = "in", res = 300)
+# png(paste0(base_dir,"R/figs_exp/scd_maps.png"), width = 16, height = 3.2,
+#     units = "in", res = 300)
 
 #Plot maps
 layout(matrix(c(rep(1, 7), 2, rep(3, 7), 4, rep(5, 7), 6),
@@ -2963,7 +2986,7 @@ dis_diep_day <- ord_day(data_in = grdc_data_diep$value,
                         end_y = 2016)
 
 dis_diep_ann <- apply(dis_diep_day, 1, sum_na)
-dis_diep_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm³
+dis_diep_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm?
 
 volu_tot / dis_diep_tot * 100
 
@@ -3004,7 +3027,7 @@ dis_unte_day <- ord_day(data_in = grdc_data_unte$value,
                         end_y = 2016)
 
 dis_unte_ann <- apply(dis_diep_day, 1, sum_na)
-dis_unte_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm³
+dis_unte_tot <- mea_na(dis_diep_ann)*3600*24/1000000 #hm?
 
 volu_tot / dis_diep_tot * 100
 

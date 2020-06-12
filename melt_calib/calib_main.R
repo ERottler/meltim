@@ -11,6 +11,8 @@
 pacman::p_load(ppso, rEchseSnow, alptempr, rgeos, raster, meltimr, rfs, 
                parallel, doParallel, lhs, hydroGOF)
 
+source(paste0(getwd(), "/fcts.R"))
+
 #set base direcoty
 base_dir <- "U:/rhine_snow/"
 # base_dir <- "/home/erwin/Documents/"
@@ -1059,19 +1061,23 @@ for(i in 1:ncol(snows_cal)){
 
 dev.off()
 
+rsq <- function(x, y) summary(lm(y~x))$r.squared
+rsq_all <- NULL
 nrmse_all <- NULL
 pbias_all <- NULL
+nse_all <- NULL
 for(i in 1:ncol(snows_cal)){
   
   nrmse_all <- c(nrmse_all, nrmse(snows_cal[, i], snows_stat_cal[, i], na.rm = T))
   pbias_all <- c(pbias_all, pbias(snows_cal[, i], snows_stat_cal[, i], na.rm = T))
-  
+  nse_all <- c(nse_all, NSE(snows_cal[, i], snows_stat_cal[, i], na.rm = T))
+  rsq_all <- c(rsq_all, rsq(snows_cal[, i], snows_stat_cal[, i]))
 }
 
 
 mean(nrmse_all)
 mean(pbias_all)
-
+mean(rsq_all)
 
 nrmse(snows_cal[, i], snows_stat_cal[, i], na.rm = T)
 

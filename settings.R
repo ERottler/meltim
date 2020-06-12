@@ -26,6 +26,8 @@ pacman::p_load(ncdf4, ncdf4.helpers, PCICt, dplyr, readr, tidyr, rgeos, ggplot2,
                Rlibeemd, xts, emdbook, rfs, meltimr, readr, tmap, sf, hydroGOF)
 # library(phaselag)
 
+source(paste0(getwd(), "/fcts.R"))
+
 #directories----
 
 #set base direcoty
@@ -51,7 +53,7 @@ ezg_dir <- "D:/nrc_user/rottler/basin_data/EZG_Schweiz_BAFU/"
 
 # stopCluster(my_clust)
 
-n_cores <- 35#number of cores used for parallel computing
+n_cores <- 5#number of cores used for parallel computing
 
 #Make cluster for parallel computing
 my_clust <- makeCluster(n_cores)
