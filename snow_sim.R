@@ -1087,6 +1087,10 @@ vdis <- sdis * grid_m2
 
 
 #Temperature: mean average
+block_size <- 1000
+block_stas <- c(1, seq(block_size+1, ncol(temps_d), by = block_size))
+block_ends <- c(seq(block_size, ncol(temps_d), by = block_size), ncol(temps_d))
+
 for(b in 1:length(block_stas)){
 
   temps_calc <- temps_d[, block_stas[b]:block_ends[b]]
@@ -1100,7 +1104,7 @@ for(b in 1:length(block_stas)){
             start_year = sta_yea_bas,
             end_year = end_yea_bas,
             break_day = 274,
-            do_ma = F,
+            do_ma = T,
             window_width = 30,
             method_ana = "mean") #[°C]
 
@@ -1161,7 +1165,7 @@ for(b in 1:length(block_stas)){
             end_year = end_yea_bas,
             break_day = 274,
             do_ma = T,
-            window_width = 14,
+            window_width = 30,
             method_ana = "sens_slope") * 10 #[°C/dec]
 
   }
@@ -1188,7 +1192,7 @@ for(b in 1:length(block_stas)){
             start_year = sta_yea_bas,
             end_year = end_yea_bas,
             break_day = 274,
-            do_ma = F,
+            do_ma = T,
             window_width = 30,
             method_ana = "mean") #[mm]
 
@@ -1229,7 +1233,7 @@ for(b in 1:length(block_stas)){
   }
 
 }
-# 
+
 # #Evaportranspiration: median average
 # for(b in 1:length(block_stas)){
 # 
@@ -1688,25 +1692,13 @@ hist(dem_ele, nclass = 50)
 
 #melt_ext----
 
-#Test spatial coherence results
-points_sel <- which(grid_points_d@coords[, 1] > med_na(grid_points_d@coords[, 1]))
-points_sel <- which(grid_points@coords[, 1] > min_na(grid_points@coords[, 1]))
-
-range(elevs_d[points_sel])
-my_elev_bands_sel <- seq(400, 3000, 50)
-
-svolu_d_band_sel <- f_elev_bands(data_in = snows_d[, points_sel], 
-                                 elev_bands = my_elev_bands_sel,
-                                 func_aggr = "sum", 
-                                 meta_dat = elevs_d[points_sel])*grid_m2 
-
 #Bands calculate
 yea_min_mag_bands_14 <- NULL
 yea_min_doy_bands_14 <- NULL
 
-for(i in 1:ncol(svolu_d_band_sel)){
+for(i in 1:ncol(svolu_d_band)){
   
-  swe_band <- svolu_d_band_sel[, i]
+  swe_band <- svolu_d_band[, i]
   
   swe_band_dif <- c(NA, diff(swe_band))
   
@@ -1722,8 +1714,7 @@ for(i in 1:ncol(svolu_d_band_sel)){
                          start_y = 1954,
                          end_y = 2014,
                          break_day = 274,
-                         do_ma = F,
-                         window_width = 30)
+                         do_ma = F)
   
   min_doy <- function(data_in){
     
@@ -1750,7 +1741,7 @@ freq_diff_all <- NULL
 length_bands_all <- NULL
 width_over <- 14
 
-for(b in 1:ncol(svolu_d_band_sel)){
+for(b in 1:ncol(svolu_d_band)){
   
   band_sel <- b  
   
@@ -1769,7 +1760,7 @@ for(b in 1:ncol(svolu_d_band_sel)){
     bands_lengt_1 <- c(bands_lengt_1, length(bands_asso_1))
     
   }
-  hist_1 <- hist(bands_frequ_1, breaks = seq(from = 0.5, to = ncol(svolu_d_band_sel)+0.5, by = 1), plot = F)
+  hist_1 <- hist(bands_frequ_1, breaks = seq(from = 0.5, to = ncol(svolu_d_band)+0.5, by = 1), plot = F)
   
   bands_frequ_2 <- NULL
   bands_lengt_2 <- NULL
@@ -1787,7 +1778,7 @@ for(b in 1:ncol(svolu_d_band_sel)){
     bands_lengt_2 <- c(bands_lengt_2, length(bands_asso_2))
     
   }
-  hist_2 <- hist(bands_frequ_2, breaks = seq(from = 0.5, to = ncol(svolu_d_band_sel)+0.5, by = 1), plot = F)
+  hist_2 <- hist(bands_frequ_2, breaks = seq(from = 0.5, to = ncol(svolu_d_band)+0.5, by = 1), plot = F)
   
   freq_diff <- hist_2$counts - hist_1$counts
   
@@ -1798,10 +1789,14 @@ for(b in 1:ncol(svolu_d_band_sel)){
   
 }
 
+save(yea_min_doy_bands_14, yea_min_mag_bands_14, freq_bands_1, freq_bands_2, freq_diff_all,
+     length_bands_all, my_elev_bands,
+     file = "U:/rhine_snow/R/figs_exp/melt_together.RData")
+
 
 pdf("/home/rottler/ownCloud/RhineFlow/rhine_snow/manus/meltim_v1/figures/bands_asso.pdf", width = 8, height = 5)
 
-band_test <- 28 #my_elev_bands[band_test]
+band_test <- 24 #my_elev_bands[band_test]
 col_1 <- viridis(9, direction = 1)[4] 
 col_2 <- "darkred"
 
@@ -1819,7 +1814,7 @@ axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tc
 axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
 mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
 mtext("Frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
-mtext("a) Frequency concurrent melt (elevation band 1550-1600 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("Frequency concurrent melt (elevation band 1400-1450 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
 box()
 
 dev.off()
@@ -1833,14 +1828,14 @@ plot(freq_diff_all[band_test, ], type = "n", axes = F, ylab = "", xlab = "", xax
      xlim = c(0, 60), ylim = c(-9, 9))
 abline(v = band_test, col = "black", lwd = 1.5)
 lines(freq_diff_all[band_test, ], lwd = 2, col = "grey55")
-polygon(x = c(0.999, 1:59) , y = c(0, freq_diff_all[band_test, ]), col = alpha("grey55", alpha = 0.7), border = F)
+polygon(x = c(0.999, 1:58) , y = c(0, freq_diff_all[band_test, ]), col = alpha("grey55", alpha = 0.7), border = F)
 elevs_sel <- c(6, 16, 26, 36, 46, 56)
 axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
 axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 0.9)
 abline(h = 0, lty = "dotted")
 mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.3, cex = 1.1)
 mtext("Change frequency concurrent melt [-]", side = 2, adj = 0.5, line = 1.3, cex = 1.1)
-mtext("b) Changes in concurrent melt (elevation band 1550-1600 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("Changes in concurrent melt (elevation band 1400-1450 m)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
 box()
 
 dev.off()
@@ -1861,25 +1856,496 @@ image(x = 1:nrow(freq_diff_all),
       y = 1:ncol(freq_diff_all),
       z = freq_diff_all, 
       col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), axes = F, ylab = "", xlab = "")
-elevs_sel <- c(6, 16, 26, 36, 46, 56)-3
-axis(1, at = elevs_sel, labels = my_elev_bands_sel[elevs_sel], mgp=c(3, 0.55, 0), tck = -0.005, cex.axis = 1.4)
-axis(2, at = elevs_sel, labels = my_elev_bands_sel[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.55, 0), tck = -0.005, cex.axis = 1.4)
+axis(2, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
 mtext("Elevation band [m]", side = 1, adj = 0.5, line = 2.1, cex = 1.1)
 mtext("Elevation band [m]", side = 2, adj = 0.5, line = 2.1, cex = 1.1)
-mtext("c) Changes in concurrent melt (all elevation bands)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("Changes in concurrent melt (all elevation bands)", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
 mtext("[-]", side = 3, adj = 1.0, line = 0.2, cex = 1.1)
 box()
-
-# points(c(18, 27, 35, 43, 51), c(18, 27, 35, 43, 51), pch = 21, cex = 2, col = "black")
 
 par(mar = c(3.5, 0.2, 2.5, 4.0))
 
 alptempr::image_scale(as.matrix(freq_diff_all), col = cols_mel, breaks = seq(from = -12, to = 12, length.out = 101), horiz=F, ylab="", xlab="", yaxt="n", axes=F)
 axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
-# mtext(lab_unit, side = 3, line = 0.3, cex = 1)
 box()
 
 dev.off()
+
+
+
+yea_min_doy_bands_tf1 <- apply(yea_min_doy_bands_14[1:30, ], 2, mea_na)
+yea_min_doy_bands_tf2 <- apply(yea_min_doy_bands_14[31:60, ], 2, mea_na)
+
+par(mar = c(2.5, 2.5, 2.0, 0.2))
+
+plot(yea_min_doy_bands_tf1, type = "n", axes = F, ylim = range(c(yea_min_doy_bands_tf1, yea_min_doy_bands_tf2)))
+lines(yea_min_doy_bands_tf1, col = "steelblue4", lwd = 2)
+lines(yea_min_doy_bands_tf2, col = "darkred", lwd = 2)
+legend("topleft", c("1985-2014", "1954-1984"), col = c("steelblue4", "darkred"), pch = 19)
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.1)
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+axis(2, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(2, at = x_axis_lab, c("O","N","D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+mtext("Elevation band [m]", side = 1, adj = 0.5, line = 1.6, cex = 1.1)
+mtext("Day of the year [-]", side = 2, adj = 0.5, line = 1.6, cex = 1.1)
+
+box()
+
+
+tslo_basin <- apply(tslo_band, 1, mea_na)
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+
+plot(tslo_basin, type = "l", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+axis(2, mgp=c(3, 0.15, 0), tck = -0.01, cex.axis = 1.1)
+abline(h = 0, lty = "dashed", col = "grey55")
+box()
+
+
+#Temperature during melt event
+temps_melt_14 <- NULL
+for(k in 1:ncol(temps_d_band)){
+  
+  print(k)
+  
+  temps_sel <- temps_d_band[, k]
+  
+  temps_day <- ord_day(data_in = temps_sel,
+                       date = meteo_date,
+                       start_y = 1954,
+                       end_y = 2014,
+                       break_day = 274,
+                       do_ma = T,
+                       window_width = 14)
+  
+  temp_inp <- NULL
+  for (i in 1:nrow(temps_day)) {
+    
+    temp_ma_sel <- temps_day[i, yea_min_doy_bands_14[i, k]]
+    
+    temp_inp <- c(temp_inp, temp_ma_sel)
+  }
+  
+  temps_melt_14 <- cbind(temps_melt_14, temp_inp)
+  
+}
+
+temps_melt_14_mea <- apply(temps_melt_14, 2, mea_na)
+yea_min_mag_bands_14_mea <- apply(yea_min_mag_bands_14, 2, mea_na)
+yea_min_doy_bands_14_mea <- apply(yea_min_doy_bands_14, 2, mea_na)
+
+plot(temps_melt_14_mea, col = "red3")
+par(new = T)
+plot(yea_min_mag_bands_14_mea*-1)
+
+temps_melt_14_1 <- apply(temps_melt_14[1:30, ], 2, mea_na)
+temps_melt_14_2 <- apply(temps_melt_14[31:60, ], 2, mea_na)
+
+plot(temps_melt_14_1, type = "l")
+lines(temps_melt_14_2, col = "red3")
+
+
+#event-based
+#take one year and look who is melting together
+
+plot(yea_min_doy_bands_14[15, ], my_elev_bands[-1])
+plot(temps_melt_14[15, ], my_elev_bands[-1])
+plot(yea_min_doy_bands_14[15, ], temps_melt_14[15, ])
+
+#plot temperature one year
+
+temps_d_band_ma14 <- NULL
+for(i in 1:ncol(temps_d_band)){
+  
+  temp_ma14 <- rollapply(data = temps_d_band[, i], width = 14,
+                         FUN = mea_na, align = "center", fill = NA) 
+  temps_d_band_ma14 <- cbind(temps_d_band_ma14, temp_ma14)
+  
+}
+
+yea_ind_sel <- 25
+#temperature form 1951, snow analysis from 1954 on; add three at selection
+#day zero is first of October; add 274
+temps_d_ma14_sel <- temps_d_band_ma14[(((yea_ind_sel-1+3)*365+274)+1):((yea_ind_sel+3)*365+274), ]
+
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "grey90"))(50)
+cols_max <- colorRampPalette(c("grey90", "gold3",  "orange3", "orangered4", "orangered4", "darkred"))(50)
+cols_mel <- c(cols_min, cols_max)
+my_breaks <- seq(-max_na(abs(temps_d_ma14_sel[1:365,])), max_na(abs(temps_d_ma14_sel[1:365,])), length.out = 101)
+
+layout(matrix(c(rep(1, 7), 2),
+              1, 8), widths=c(), heights=c())
+
+par(mar = c(3.5, 3.5, 2.5, 0.2))
+
+image(x = 1:nrow(temps_d_ma14_sel),
+      y = 1:ncol(temps_d_ma14_sel),
+      z = temps_d_ma14_sel, 
+      col = cols_mel, breaks = my_breaks, axes = F, ylab = "", xlab = "")
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+axis(2, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+
+points(yea_min_doy_bands_14[yea_ind_sel, ], 1:ncol(temps_d_ma14_sel))
+
+box()
+
+par(mar = c(3.5, 0.2, 2.5, 4.0))
+
+alptempr::image_scale(as.matrix(temps_d_ma14_sel), col = cols_mel, breaks = my_breaks,
+                      horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+box()
+
+
+
+
+#Height of zero line; vertical extend warm air
+numb_pos <- function(temps_in){
+  
+  length(which(temps_in > 0))
+  
+}
+
+numb_pos_all <- apply(temps_d_band, 1, numb_pos)
+
+numb_pos_day <- ord_day(data_in = numb_pos_all,
+                        date = date_snow,
+                        start_y = 1954,
+                        end_y = 2014,
+                        break_day = 274,
+                        do_ma = F)
+
+numb_pos_mea <- apply(numb_pos_day, 2, mea_na)
+numb_pos_tf1 <- apply(numb_pos_day[1:30, ], 2, mea_na)
+numb_pos_tf2 <- apply(numb_pos_day[31:60, ], 2, mea_na)
+
+plot(numb_pos_tf1, type = "l")
+lines(numb_pos_tf2, col = "red3")
+
+plot(numb_pos_tf2-numb_pos_tf1, type = "l")
+abline(h = 0)
+par(new=T)
+plot(yea_min_doy_bands_tf1, my_elev_bands[-1], type = "l", xlim = c(0, 365))
+par(new=T)
+plot(yea_min_doy_bands_tf2, my_elev_bands[-1], type = "l", xlim = c(0, 365))
+
+length(which(temps_d_band[1, ]) > 0)
+
+
+
+#Energy input from precipitation
+pene_melt <- NULL
+for(k in 1:ncol(temps_d_band)){
+  
+  print(k)
+  
+  temps_sel <- temps_d_band[-(1:365), k]
+  precs_sel <- precs_d_band[, k]
+  
+  #Precipitation times temperature
+  prec_ene <- temps_sel * precs_sel
+  
+  #Moving sum filter
+  prec_ene_ms_14 <- rollapply(data = prec_ene, width = 14,
+                                  FUN = sum_na, align = "center", fill = NA)
+  
+  
+  prec_ene_day <- ord_day(data_in = prec_ene_ms_14,
+                          date = date_snow,
+                          start_y = 1954,
+                          end_y = 2014,
+                          break_day = 274,
+                          do_ma = T,
+                          window_width = 14)
+  
+  pene_inp <- NULL
+  for (i in 1:nrow(prec_ene_day)) {
+    
+    pene_inp_sel <- prec_ene_day[i, yea_min_doy_bands_14[i, k]]
+    
+    pene_inp <- c(pene_inp, pene_inp_sel)
+  }
+  
+  pene_melt <- cbind(pene_melt, pene_inp)
+  
+}
+
+pene_melt_mea <- apply(pene_melt, 2, mea_na)
+
+plot(pene_melt_mea, col = "red3")
+par(new = T)
+plot(yea_min_mag_bands_14_mea*-1)
+
+pene_melt_1 <- apply(pene_melt[1:30, ], 2, mea_na)
+pene_melt_2 <- apply(pene_melt[31:60, ], 2, mea_na)
+
+plot(pene_melt_1, type = "l")
+lines(pene_melt_2, col = "red3")
+
+
+#Temperature 14 days before melt event
+temps_melt_14prev <- NULL
+for(k in 1:ncol(temps_d_band)){
+  
+  print(k)
+  
+  temps_sel <- temps_d_band[, k]
+  
+  temps_day <- ord_day(data_in = temps_sel,
+                       date = meteo_date,
+                       start_y = 1954,
+                       end_y = 2014,
+                       break_day = 274,
+                       do_ma = T,
+                       window_width = 14)
+  
+  temp_inp <- NULL
+  for (i in 1:nrow(temps_day)) {
+    
+    temp_ma_sel <- temps_day[i, yea_min_doy_bands_14[i, k]-14]
+    
+    temp_inp <- c(temp_inp, temp_ma_sel)
+  }
+  
+  temps_melt_14prev <- cbind(temps_melt_14prev, temp_inp)
+  
+}
+
+temps_melt_14prev_mea <- apply(temps_melt_14prev, 2, mea_na)
+
+plot(temps_melt_14prev_mea, col = "red3", type = "p")
+
+temps_melt_14prev_mea_tf1 <- apply(temps_melt_14prev[1:30, ], 2, mea_na)
+temps_melt_14prev_mea_tf2 <- apply(temps_melt_14prev[31:60, ], 2, mea_na)
+
+plot(temps_melt_14prev_mea_tf1, type = "p")
+points(temps_melt_14prev_mea_tf2, col = "red3")
+
+#Size of snow pack during melt
+swe_melt <- NULL
+for(k in 1:ncol(snows_d_band)){
+  
+  print(k)
+  
+  snows_sel <- snows_d_band[, k]
+  
+  snows_day <- ord_day(data_in = snows_sel,
+                       date = date_snow,
+                       start_y = 1954,
+                       end_y = 2014,
+                       break_day = 274,
+                       do_ma = F)
+  
+  swe_melt_ind <- NULL
+  for (i in 1:nrow(snows_day)) {
+    
+    snow_sel <- snows_day[i, yea_min_doy_bands_14[i, k]]
+    
+    swe_melt_ind <- c(swe_melt_ind, snow_sel)
+  }
+  
+  swe_melt <- cbind(swe_melt, swe_melt_ind)
+  
+}
+
+snows_mel_mea <- apply(swe_melt, 2, mea_na)
+snows_mel_tf1 <- apply(swe_melt[1:30, ], 2, mea_na)
+snows_mel_tf2 <- apply(swe_melt[31:60, ], 2, mea_na)
+
+plot(swe_melt[, 25])
+plot(temps_melt_14[, 25])
+
+
+plot(snows_mel_tf1, col = "black")
+points(snows_mel_tf2, col = "red3")
+
+
+par(new = T)
+plot(yea_min_mag_bands_14_mea*-1)
+
+temps_melt_14_1 <- apply(temps_melt_14[1:30, ], 2, mea_na)
+temps_melt_14_2 <- apply(temps_melt_14[31:60, ], 2, mea_na)
+
+plot(temps_melt_14_1, type = "l")
+lines(temps_melt_14_2, col = "red3")
+
+
+
+
+
+
+#Timing critical melt temperature
+
+tcrit_doy <- NULL
+for(k in 1:ncol(temps_d_band)){
+  
+  print(k)
+  
+  temps_sel <- temps_d_band[, k]
+  
+  temps_day <- ord_day(data_in = temps_sel,
+                       date = meteo_date,
+                       start_y = 1954,
+                       end_y = 2014,
+                       break_day = 274,
+                       do_ma = T,
+                       window_width = 14)
+  tcrit_sing <- NULL
+  for(i in 1:nrow(temps_day)){
+    
+    tcrit_doy_min_sing <- min_na(which(temps_day[i, 92:365] > temps_melt_14_mea[k]))+92
+    
+    tcrit_sing <- c(tcrit_sing, tcrit_doy_min_sing)
+    
+  }
+
+
+  tcrit_doy <- cbind(tcrit_doy, tcrit_sing)
+  
+}
+
+tcrit_doy_mea <- apply(tcrit_doy, 2, mea_na)
+tcrit_doy_tf1 <- apply(tcrit_doy[1:30, ], 2, mea_na)
+tcrit_doy_tf2 <- apply(tcrit_doy[31:60, ], 2, mea_na)
+
+plot(tcrit_doy_mea)
+points(yea_min_doy_bands_14_mea, col = "red3")
+
+mea_na(tcrit_doy_mea - yea_min_doy_bands_14_mea)
+
+plot(tcrit_doy_tf1, type = "l")
+lines(tcrit_doy_tf2, col = "red3")
+
+#energy input during 14 day + 11 days before
+
+
+
+
+
+
+
+
+
+
+
+#Energy input as positive degree celcius
+temp_in <- temps_d_band[, 1]
+sta_year <- 1954
+end_year <- 2014
+
+f_energy_pos <- function(temp_in, sta_year = 1984, end_year = 2014){
+  
+  #set temparatures below zero to zero
+  temp_in[which(temp_in < 0)] <- 0
+  
+  #order data by day of the year
+  temp_day <- ord_day(data_in = temp_in, 
+                      date = meteo_date, 
+                      start_y = sta_year,
+                      end_y = end_year,
+                      break_day = 274,
+                      do_ma = T,
+                      window_width = 30)
+  
+  #sum positive values per day
+  temp_sum <- apply(temp_day, 2, sum_na)
+  
+  return(temp_sum)
+}
+
+energy_pos_all <- apply(temps_d_band, 2, f_energy_pos)
+
+cols_mel <- colorRampPalette(c("grey90", "gold3",  "orange3", "orangered4", "orangered4", "darkred"))(100)
+my_breaks <- seq(0, max_na(energy_pos_all), length.out = 101)
+
+layout(matrix(c(rep(1, 7), 2),
+              1, 8), widths=c(), heights=c())
+
+par(mar = c(3.5, 3.5, 2.5, 0.2))
+
+image(x = 1:nrow(energy_pos_all),
+      y = 1:ncol(energy_pos_all),
+      z = energy_pos_all, 
+      col = cols_mel, breaks = my_breaks, axes = F, ylab = "", xlab = "")
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+axis(2, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+mtext("Elevation band [m]", side = 2, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("Estimated energy input pos. temperature", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("[-]", side = 3, adj = 1.0, line = 0.2, cex = 1.1)
+box()
+
+par(mar = c(3.5, 0.2, 2.5, 4.0))
+
+alptempr::image_scale(as.matrix(energy_pos_all), col = cols_mel, breaks = my_breaks, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+box()
+
+
+#Changes in energy input
+
+#changes year in function above
+energy_pos_1 <- apply(temps_d_band, 2, f_energy_pos)
+energy_pos_2 <- apply(temps_d_band, 2, f_energy_pos)
+
+energy_dif <- energy_pos_2 - energy_pos_1
+
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "cadetblue3", "grey90"))(50)
+cols_max <- colorRampPalette(c("grey90", "gold3",  "orange3", "orangered4", "orangered4", "darkred"))(50)
+cols_mel <- c(cols_min, cols_max)
+my_breaks <- seq(-max_na(abs(energy_dif)), max_na(abs(energy_dif)), length.out = 101)
+
+layout(matrix(c(rep(1, 7), 2),
+              1, 8), widths=c(), heights=c())
+
+par(mar = c(3.5, 3.5, 2.5, 0.2))
+
+image(x = 1:nrow(energy_dif),
+      y = 1:ncol(energy_dif),
+      z = energy_dif, 
+      col = cols_mel, breaks = my_breaks, axes = F, ylab = "", xlab = "")
+elevs_sel <- c(6, 16, 26, 36, 46, 56)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.06)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.15, 0))#plot labels
+axis(2, at = elevs_sel, labels = my_elev_bands[elevs_sel], mgp=c(3, 0.25, 0), tck = -0.005, cex.axis = 1.4)
+mtext("Elevation band [m]", side = 2, adj = 0.5, line = 2.1, cex = 1.1)
+mtext("Changes energy input pos. temperature", side = 3, adj = 0.0, line = 0.2, cex = 1.4)
+mtext("[-]", side = 3, adj = 1.0, line = 0.2, cex = 1.1)
+box()
+
+par(mar = c(3.5, 0.2, 2.5, 4.0))
+
+alptempr::image_scale(as.matrix(energy_pos_all), col = cols_mel, breaks = my_breaks, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.35, 0), tck = -0.08, cex.axis = 1.4)
+box()
+
+
+
+
+
+
+
 
 
 #sc_frac----

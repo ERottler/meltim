@@ -16,6 +16,7 @@ grdc_dir <- "D:/nrc_user/rottler/GRDC_DAY/"
 
 #Load results snow simulations
 load("U:/rhine_snow/R/figs_exp/sim_scf_exp.RData")
+load("U:/rhine_snow/R/figs_exp/temp_prec_exp.RData")
 
 #map_over----
 
@@ -103,25 +104,37 @@ snow    <- sp::spTransform(snow_84, CRS = crs(basin_base, asText = T))
 
 pdf(paste0(base_dir,"R/figs_exp/map_over_raw.pdf"), width = 10, height = 6)
 
-par(mar = c(0,0,0,0))
+par(bg=NA, mar=c(0,0,0,0), oma=c(0,0,0,0))
 par(family = "serif")
 
-plot(dem_sub_swiss, axes = F, legend = F,  col = colorRampPalette(c("white", "black"))(200), box = F)
-plot(basin_bern, add =T, lwd = 0.025, col = alpha("steelblue4", alpha = 0.35))
+col_elev <- colorRampPalette(c("white", "black"))(200)
+# col_elev <- viridis::viridis(n = 200, direction = -1)
+# col_elev <- terrain.colors(200)
+# cols_min <- colorRampPalette(c("darkred", "firebrick4", "orangered4", "gold3", "grey98"))(n_min)
+# cols_max <- colorRampPalette(c("grey98", "lightcyan3", viridis::viridis(9, direction = 1)[c(4,3,2,1)]))(n_max)
+
+plot(dem_sub_swiss, axes = F, legend = F,  col = col_elev, box = F)
+plot(basin_bern, add =T, lwd = 0.025, col = alpha("steelblue4", alpha = 0.45))
 plot(basin_brug, add =T, lwd = 0.025, col = alpha("steelblue4", alpha = 0.25))
-plot(basin_unte, add =T, lwd = 0.025, col = alpha("steelblue4", alpha = 0.45))
-plot(basin_diep, add =T, lwd = 0.025, col = alpha("darkolivegreen", alpha = 0.35))
+plot(basin_unte, add =T, lwd = 0.025, col = alpha("steelblue4", alpha = 0.35))
+plot(basin_diep, add =T, lwd = 0.025, col = alpha("darkolivegreen", alpha = 0.45))
 plot(basin_neuh, add =T, lwd = 0.025, col = alpha("darkolivegreen", alpha = 0.25))
-plot(basin_reki, add =T, lwd = 0.025, col = alpha("darkolivegreen", alpha = 0.45))
-plot(basin_base, add =T, lwd = 1.8, border = "darkgoldenrod4")
-plot(rhin_riv, add = T, col = "blue4")
-plot(aare_riv, add = T, col = "blue4")
+plot(basin_reki, add =T, lwd = 0.025, col = alpha("darkolivegreen", alpha = 0.35))
+plot(basin_bern, add =T, lwd = 0.8, border = "black")
+plot(basin_brug, add =T, lwd = 0.8, border = "black")
+plot(basin_unte, add =T, lwd = 0.8, border = "black")
+plot(basin_diep, add =T, lwd = 0.8, border = "black")
+plot(basin_neuh, add =T, lwd = 0.8, border = "black")
+plot(basin_reki, add =T, lwd = 0.8, border = "black")
+plot(basin_base, add =T, lwd = 2.5, border = "gold3")
+plot(rhin_riv, add = T, col = "blue4", lwd = 1.5)
+plot(aare_riv, add = T, col = "blue4", lwd = 1.5)
 plot(brienzersee, add = T, col = "blue4")
 plot(thunersee, add = T, col = "blue4")
 plot(bielersee, add = T, col = "blue4")
 plot(bodensee, add = T, col = "blue4")
 plot(gauges, add = T, pch = 23, cex = 1.7,
-     bg = alpha(c("darkgoldenrod4", "darkolivegreen", "darkolivegreen", "steelblue4",
+     bg = alpha(c("gold3", "darkolivegreen", "darkolivegreen", "steelblue4",
                    "steelblue4", "steelblue4", "darkolivegreen"), alpha = 1.0))
 plot(gauges, add = T, pch = 19, cex = 0.5)
 plot(snow, add = T, pch = "*", cex = 1.3)
@@ -129,8 +142,8 @@ lab_mov <- 5200
 lab_pos_1 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), +lab_mov, rep(lab_mov, 7), +lab_mov, lab_mov,        0, -lab_mov, -lab_mov-4000,  lab_mov+3000, lab_mov+4000, -lab_mov)
 lab_pos_2 <- c(lab_mov, -lab_mov, rep(lab_mov, 2), -lab_mov, rep(lab_mov, 7), -lab_mov, lab_mov, -lab_mov, lab_mov,  lab_mov,   lab_mov,       0,  -lab_mov)
 text(snow@coords[, 1]+lab_pos_1, snow@coords[, 2]+lab_pos_2, labels = stat_meta$ID, col = "black", cex = 0.9)
-addscalebar(plotunit = "m", widthhint = 0.2, htin = 0.15, pos = "topleft",
-            padin = c(0.2, 0.2))
+prettymapr::addscalebar(plotunit = "m", widthhint = 0.25, htin = 0.15, pos = "topleft",
+                        padin = c(0.15, 0.15))
 
 dev.off()
 
@@ -222,22 +235,22 @@ par(mar = c(1, 2.2, 2.0, 1))
 
 par(family = "serif")
 
-hist_res <- hist(dem_ele, breaks = hist_breaks, plot = F)
+hist_res <- hist(dem_ele_base, breaks = hist_breaks, plot = F)
 
-ylabs <- (hist_res$counts / length(dem_ele))  * 100
+ylabs <- (hist_res$counts / length(dem_ele_base))  * 100
 
-areal_perc <- c(round(length(which(dem_ele < 1000)) / length(dem_ele) * 100, digits = 2),
-                round(length(which(dem_ele > 1000 & dem_ele < 2000)) / length(dem_ele) * 100, digits = 2),
-                round(length(which(dem_ele > 2000 & dem_ele < 3000)) / length(dem_ele) * 100, digits = 2),
-                round(length(which(dem_ele > 3000)) / length(dem_ele) * 100, digits = 2))
+areal_perc <- c(round(length(which(dem_ele_base < 1000)) / length(dem_ele_base) * 100, digits = 2),
+                round(length(which(dem_ele_base > 1000 & dem_ele_base < 2000)) / length(dem_ele_base) * 100, digits = 2),
+                round(length(which(dem_ele_base > 2000 & dem_ele_base < 3000)) / length(dem_ele_base) * 100, digits = 2),
+                round(length(which(dem_ele_base > 3000)) / length(dem_ele_base) * 100, digits = 2))
 
 hist(dem_ele_base, breaks = hist_breaks, axes = F, ylab = "", xlab = "", main = "",
-     col = alpha("darkgoldenrod4", alpha = 0.8), yaxs = "i", ylim = c(0,16000), xlim = c(4000, 0))
+     col = alpha("gold3", alpha = 0.8), yaxs = "i", ylim = c(0,16000), xlim = c(4000, 0))
 # rect(xleft =  6000, xright = -300, ytop = 150000, ybottom = 0 ,col = alpha("grey", alpha = 0.30), border = NA)
 box()
 axis(3, mgp=c(3, 0.08, 0), tck = -0.01, cex.axis = 0.8)
 axis(2, mgp=c(3, 0.08, 0), tck = -0.01, cex.axis = 0.8,
-     at = c(length(dem_ele) * c(0.01, 0.025, 0.05, 0.075, 0.1)), labels = c("1.0", "2.5", "5.0", "7.5", "10.0"))
+     at = c(length(dem_ele_base) * c(0.01, 0.025, 0.05, 0.075, 0.1)), labels = c("1.0", "2.5", "5.0", "7.5", "10.0"))
 abline(v = c(0, 1000, 2000, 3000, 4000), col = "black", lty = "dashed", lwd = 1.0)
 mtext("Elevation [m]", side = 3, line = 1.1, adj = 0.5, cex = 1.2)
 mtext("Areal fraction [%]", side = 2, line = 1.2, adj = 0.5, cex = 1.2)
@@ -247,6 +260,162 @@ mtext(paste(areal_perc[3], "%"), side = 2, line = -11.0, adj = 0.65, col = "blac
 mtext(paste(areal_perc[4], "%"), side = 2, line = -4.5, adj = 0.65, col = "black")
 
 dev.off()
+
+#meteo_plots----
+
+
+
+layout(matrix(c(rep(1, 8), 2, rep(3, 8), 4,
+                rep(5, 8), 6, rep(7, 8), 8),
+              2, 18, byrow = T), widths=c(), heights=c())
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+#Plot: Temperature mean
+data_day <- tmea_band
+
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_hydro <- c(cols_min, cols_max)
+breaks_hydro <- c(seq(min_na(data_day), 0, length.out = 100),
+                  seq(0, max_na(data_day), length.out = 100+1))
+
+par(mar = c(1.7, 3.7, 2.5, 0.2))
+
+image(x = 1:nrow(data_day),
+      y = seq(250, 3150, 50),
+      z = data_day,
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.08)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
+axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.5)
+mtext("a) Temperature mean", side= 3, line = 0.3, cex = 1.6, adj = 0.0)
+mtext("[°C]", side= 3, line = 0.3, cex = 1.6, adj = 1.0)
+mtext("Elevation", side= 2, line = 1.9, cex = 1.6)
+
+box()
+
+par(mar = c(1.7, 0.2, 2.5, 1.7))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.4)
+box()
+
+
+#Plot: Temperature trend
+data_day <- tslo_band
+
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_hydro <- c(cols_min, cols_max)
+breaks_hydro <- seq(-max_na(abs(data_day)), max_na(abs(data_day)), length.out = length(cols_hydro)+1)
+
+par(mar = c(1.7, 3.7, 2.5, 0.2))
+
+image(x = 1:nrow(data_day),
+      y = seq(250, 3150, 50),
+      z = data_day,
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.08)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
+axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.5)
+mtext("b) Temperature trend", side= 3, line = 0.3, cex = 1.6, adj = 0.0)
+mtext(expression(paste("[°C ", "dec"^"-1", "]")), side= 3, line = 0.3, cex = 1.6, adj = 1.0)
+mtext("Elevation", side= 2, line = 1.9, cex = 1.6)
+
+box()
+
+par(mar = c(1.7, 0.2, 2.5, 1.7))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.4)
+box()
+
+
+#Plot: Precipitation mean
+data_day <- pmea_band
+
+cols_hydro <- grDevices::colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[c(4,3,2,1,1)]))(100)
+
+breaks_hydro <- c(seq(min_na(data_day), max_na(data_day),  length.out = 100+1))
+
+cols_hydro <- colorRampPalette(c(viridis::viridis(9, direction = 1)[9:1]))(200)
+breaks_hydro <- seq(0, alptempr::max_na(data_day), length.out = length(cols_hydro)+1)
+
+x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
+x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
+
+par(mar = c(1.7, 3.7, 2.5, 0.2))
+
+image(x = 1:nrow(data_day),
+      y = seq(250, 3150, 50),
+      z = data_day,
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.08)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
+axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.5)
+mtext("c) Precipitation mean", side= 3, line = 0.3, cex = 1.6, adj = 0.0)
+mtext("[mm]", side= 3, line = 0.3, cex = 1.6, adj = 1.0)
+mtext("Elevation", side= 2, line = 1.9, cex = 1.6)
+
+box()
+
+par(mar = c(1.7, 0.2, 2.5, 1.7))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.4)
+# mtext("cm", side = 3, line = 0.2, cex = 1.0)
+box()
+
+
+#Plot: Precipitation trend
+data_day <- pslo_band
+
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_hydro <- c(cols_min, cols_max)
+breaks_hydro <- seq(-max_na(abs(data_day)), max_na(abs(data_day)), length.out = length(cols_hydro)+1)
+
+par(mar = c(1.7, 3.7, 2.5, 0.2))
+
+image(x = 1:nrow(data_day),
+      y = seq(250, 3150, 50),
+      z = data_day,
+      col = cols_hydro,
+      breaks = breaks_hydro,
+      ylab = "", xlab = "", axes = F)
+axis(1, at = x_axis_tic, c("","","","","","","","","","","","",""), tick = TRUE,
+     col = "black", col.axis = "black", tck = -0.08)#plot ticks
+axis(1, at = x_axis_lab, c("O","N","D","J","F","M","A","M","J","J","A","S"), tick = FALSE,
+     col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.4)#plot labels
+axis(2, mgp=c(3, 0.20, 0), tck = -0.03, cex.axis = 1.5)
+mtext("b) Precipitation trend", side= 3, line = 0.3, cex = 1.6, adj = 0.0)
+mtext(expression(paste("[mm ", "dec"^"-1", "]")), side= 3, line = 0.3, cex = 1.6, adj = 1.0)
+mtext("Elevation", side= 2, line = 1.9, cex = 1.6)
+
+box()
+
+par(mar = c(1.7, 0.2, 2.5, 1.7))
+
+alptempr::image_scale(as.matrix(data_day), col = cols_hydro, breaks = breaks_hydro, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
+axis(4, mgp=c(3, 0.20, 0), tck = -0.10, cex.axis = 1.4)
+box()
+
+
+
 
 
 #snow_stats----
@@ -317,10 +486,10 @@ colnames(snow_all) <- stat_col
 #Plot observational stations
 
 # pdf(paste0(base_dir,"R/figs_exp/snow_stats.pdf"), width = 12, height = 14.5)
-# png(paste0(base_dir,"R/figs_exp/snow_stats.png"), width = 12, height = 14.5, 
-#     units = "in", res = 300)
-tiff(paste0(base_dir,"R/figs_exp/snow_stats.tiff"), width = 12, height = 14.5, 
+png(paste0(base_dir,"R/figs_exp/snow_stats.png"), width = 12, height = 14.5,
     units = "in", res = 300)
+# tiff(paste0(base_dir,"R/figs_exp/snow_stats.tiff"), width = 12, height = 14.5, 
+#     units = "in", res = 300)
 
 par(family = "serif")
 
@@ -565,39 +734,28 @@ grdc_data_neuh <- read_grdc(paste0(grdc_dir, "6935055_Q_Day.Cmd.txt"))
 grdc_data_bern <- read_grdc(paste0(grdc_dir, "6935020_Q_Day.Cmd.txt"))
 grdc_data_diep <- read_grdc(paste0(grdc_dir, "6935500_Q_Day.Cmd.txt"))
 
-# pdf(paste0(base_dir,"R/figs_exp/disc_perc.pdf"), width = 12, height = 8)
-tiff(paste0(base_dir,"R/figs_exp/disc_perc.tiff"), width = 12, height = 8,
-     units = "in", res = 300)
-# png(paste0(base_dir,"R/figs_exp/disc_perc.png"), width = 12, height = 8,
-#     units = "in", res = 300)
+# pdf(paste0(base_dir,"R/figs_exp/disc_perc.pdf"), width = 12, height = 15)
+# tiff(paste0(base_dir,"R/figs_exp/disc_perc.tiff"), width = 12, height = 15,
+#      units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/disc_perc.png"), width = 12, height = 15,
+    units = "in", res = 300)
 
-layout(matrix(c(rep(c(15, 3, 7, 11), 4),
-                rep(c(1, 3, 7, 11), 3),
-                rep(c(1, 4, 8, 12), 1),
-                rep(c(1, 5, 9, 13), 3),
-                rep(c(2, 5, 9, 13), 1),
-                rep(c(16, 5, 9, 13), 3),
-                rep(c(16, 6, 10, 14), 1)
-),
-4, 16), widths=c(), heights=c())
+layout(matrix(c(32, rep(29, 18),
+                32, rep(1, 8), 2,   rep(3, 8), 4,
+                32, rep(30, 18),
+                32, rep(5, 8), 6,   rep(7, 8), 8,
+                32, rep(9, 8), 10,  rep(11, 8), 12,
+                32, rep(13, 8), 14, rep(15, 8), 16,
+                32, rep(31, 18),
+                32, rep(17, 8), 18, rep(19, 8), 20,
+                32, rep(21, 8), 22, rep(23, 8), 24,
+                32, rep(25, 8), 26, rep(27, 8), 28), 
+              10, 19, byrow = T), widths=c(0.8, rep(1, 18)), heights=c(0.20, 1, 0.15, 1, 1, 1, 0.15, 1, 1, 1))
 
-# layout.show(n = 16)
-# 
-# sta_yea_cla <- 1927
-# yea_cla_1 <- sta_yea_cla
-# yea_cla_2 <- 1966
-# yea_cla_3 <- 1977
-# yea_cla_4 <- 2016
+# layout.show(n = 32)
 
-
-sta_yea_cla <- 1919
-yea_cla_1 <- sta_yea_cla
-yea_cla_2 <- 1967
-yea_cla_3 <- 1968
-yea_cla_4 <- 2016
-
-perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_2 = yea_cla_2,
-                       year_3 = yea_cla_3, year_4 = yea_cla_4){
+perce_plot <- function(data_in, date_in, main_in = "", year_1, year_2, year_3, year_4, 
+                       do_ylab = T, do_unit = T, pos_unit = 1.0){
   
   data_day <- ord_day(data_in = data_in,
                       date = date_in,
@@ -670,7 +828,7 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   # plot(1:n_max, 1:n_max, pch = 19, cex = 2, col = cols_max)
   # plot(1:n_min, 1:n_min, pch = 19, cex = 2, col = cols_min)
   
-  par(mar = c(1.6, 3.5, 2.0, 0.2))
+  par(mar = c(1.6, 3.5, 1.5, 0.2))
   par(family = "serif")
   
   image(x = 1:12,
@@ -682,13 +840,17 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
   axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), tick = FALSE,
        col="black", col.axis="black", mgp=c(3, 0.30, 0), cex.axis = 1.5)#plot labels
   axis(2, mgp=c(3, 0.25, 0), tck = -0.025, cex.axis = 1.5)
-  mtext("Prob. level", side = 2, line = 1.7, cex = 1.25)
+  if(do_ylab){
+    mtext("Prob. level", side = 2, line = 1.7, cex = 1.25) 
+  }
   mtext(main_in, side = 3, line = 0.25, cex = 1.5, adj = 0.0)
-  mtext(expression(paste("[m"^"3", " s"^"-1", "]")), side = 3, line = 0.2, cex = 1.2, adj = 1.0)
+  if(do_unit){
+    mtext(expression(paste("[m"^"3", " s"^"-1", "]")), side = 3, line = 0.2, cex = 1.2, adj = pos_unit)
+  }
   
   box()
   
-  par(mar = c(1.6, 0.2, 2.0, 3.5))
+  par(mar = c(1.6, 0.2, 1.5, 3.5))
   
   alptempr::image_scale(as.matrix(qdif), col = my_col, breaks = my_bre, horiz=F, ylab="", xlab="", yaxt="n", axes=F)
   axis(4, mgp=c(3, 0.45, 0), tck = -0.1, cex.axis = 1.5)
@@ -698,31 +860,105 @@ perce_plot <- function(data_in, date_in, main_in = "", year_1 = yea_cla_1, year_
 
 perce_plot(data_in = grdc_data_base$value,
            date_in = grdc_data_base$date,
-           main_in = "a) Basel")
+           main_in = "",
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
+
+perce_plot(data_in = grdc_data_base$value,
+           date_in = grdc_data_base$date,
+           main_in = "",
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
+
 
 perce_plot(data_in = grdc_data_unte$value,
            date_in = grdc_data_unte$date,
-           main_in = "b) Untersiggenthal")
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
 
-perce_plot(data_in = grdc_data_reki$value,
-           date_in = grdc_data_reki$date,
-           main_in = "c) Rekingen")
+perce_plot(data_in = grdc_data_unte$value,
+           date_in = grdc_data_unte$date,
+           main_in = "", do_ylab = F, do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
 
 perce_plot(data_in = grdc_data_brug$value,
            date_in = grdc_data_brug$date,
-           main_in = "d) Brugg")
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
 
-perce_plot(data_in = grdc_data_neuh$value,
-           date_in = grdc_data_neuh$date,
-           main_in = "e) Neuhausen")
+perce_plot(data_in = grdc_data_brug$value,
+           date_in = grdc_data_brug$date,
+           main_in = "", do_ylab = F, do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
 
 perce_plot(data_in = grdc_data_bern$value,
            date_in = grdc_data_bern$date,
-           main_in = "f) Bern")
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
+
+perce_plot(data_in = grdc_data_bern$value,
+           date_in = grdc_data_bern$date,
+           main_in = "", do_ylab = F,  do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
+
+
+
+perce_plot(data_in = grdc_data_reki$value,
+           date_in = grdc_data_reki$date,
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
+
+perce_plot(data_in = grdc_data_reki$value,
+           date_in = grdc_data_reki$date,
+           main_in = "", do_ylab = F, do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
+
+perce_plot(data_in = grdc_data_neuh$value,
+           date_in = grdc_data_neuh$date,
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
+
+perce_plot(data_in = grdc_data_neuh$value,
+           date_in = grdc_data_neuh$date,
+           main_in = "", do_ylab = F,  do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
 
 perce_plot(data_in = grdc_data_diep$value,
            date_in = grdc_data_diep$date,
-           main_in = "g) Diepoldsau")
+           main_in = "", do_unit = F,
+           year_1 = 1951, year_2 = 1982, year_3 = 1983, year_4 = 2014)
+
+perce_plot(data_in = grdc_data_diep$value,
+           date_in = grdc_data_diep$date,
+           main_in = "", do_ylab = F, do_unit = F,
+           year_1 = 1919, year_2 = 1967, year_3 = 1968, year_4 = 2016)
+
+#Time frames
+par(mar = c(0,0,0,0))
+plot(1:10, 1:10, axes = F, type = "n", ylab = "", xlab = "")
+mtext("a) 1951-2014", side = 3, line = -2.8, adj = 0.20, cex = 1.6)
+mtext("b) 1919-2016", side = 3, line = -2.8, adj = 0.78, cex = 1.6)
+
+#Aare branch
+par(mar = c(0,0,0,0))
+plot(1:10, 1:10, axes = F, type = "n", ylab = "", xlab = "")
+mtext("Aare branch", side = 3, line = -3.0, adj = 0.50, cex = 1.6)
+
+#Rhine branch
+par(mar = c(0,0,0,0))
+plot(1:10, 1:10, axes = F, type = "n", ylab = "", xlab = "")
+mtext("Rhine branch", side = 3, line = -3.0, adj = 0.50, cex = 1.6)
+
+#Gauges
+cex_header <- 1.6
+par(mar = c(0,0,0,0))
+
+plot(1:100, 1:100, axes = F, type = "n", xlab = "", ylab = "")
+mtext("1. Basel",            side = 2, line = -2.8, cex = cex_header, adj = 0.929, outer = T)
+mtext("2. Untersiggenthal",  side = 2, line = -2.8, cex = cex_header, adj = 0.789, outer = T)
+mtext("3. Brugg",            side = 2, line = -2.8, cex = cex_header, adj = 0.627, outer = T)
+mtext("4. Bern",             side = 2, line = -2.8, cex = cex_header, adj = 0.490, outer = T)
+mtext("5. Rekingen",         side = 2, line = -2.8, cex = cex_header, adj = 0.315, outer = T)
+mtext("6. Neuhausen",        side = 2, line = -2.8, cex = cex_header, adj = 0.170, outer = T)
+mtext("7. Diepoldsau",       side = 2, line = -2.8, cex = cex_header, adj = 0.015, outer = T)
 
 dev.off()
 
@@ -730,10 +966,10 @@ dev.off()
 #disc_rast----
 
 # pdf(paste0(base_dir,"R/figs_exp/disc_rast.pdf"), width = 12, height = 8)
-tiff(paste0(base_dir,"R/figs_exp/disc_rast.tiff"), width = 12, height = 8,
-     units = "in", res = 300)
-# png(paste0(base_dir,"R/figs_exp/disc_rast.png"), width = 12, height = 8,
-#     units = "in", res = 300)
+# tiff(paste0(base_dir,"R/figs_exp/disc_rast.tiff"), width = 12, height = 8,
+#      units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/disc_rast.png"), width = 12, height = 8,
+    units = "in", res = 300)
 
 layout(matrix(c(rep(c(15, 3, 7, 11), 4),
                 rep(c(1, 3, 7, 11), 3),
@@ -868,8 +1104,8 @@ par(family = "serif")
 
 x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
 x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
-col_1 <- alpha("grey55", alpha = 0.8)
-col_2 <- alpha("darkred", alpha = 0.8)
+col_1 <- alpha("steelblue4", alpha = 0.8)
+col_2 <- alpha("grey55", alpha = 0.8)
 
 plot(1:10, 1:10, xlim = c(1, 365), ylim = c(500, 3200), type = "n", axes = F, ylab = "", xlab = "")
 #Points Present
@@ -896,7 +1132,7 @@ axis(1, at = x_axis_lab, c("O", "N", "D", "J","F","M","A","M","J","J","A","S"), 
      col="black", col.axis="black", mgp=c(3, 0.27, 0), cex.axis = 1.5)#plot labels
 axis(2, mgp=c(3, 0.25, 0), tck = -0.01, cex.axis = 1.5)
 mtext("Elevation [m]", side = 2, line = 1.8, cex = 1.7, adj = 0.5)
-mtext("b) Snow melt elevation compensation", side = 3, line = 0.25, cex = 1.7, adj = 0.0)
+mtext("b) Snowmelt elevation compensation", side = 3, line = 0.25, cex = 1.7, adj = 0.0)
 legend("topleft", c("future", "present"), col = c(col_2, col_1), pch = 19,  box.lwd = 1, box.col = "black", bg = "white", cex = 1.4)
 Arrows(x0 = 166, x1 =156, y0 = 1250, y1 = 1250, arr.type = "triangle", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
 Arrows(x0 = 205, x1 =192, y0 = 2000, y1 = 2000, arr.type = "triangle", arr.width = 0.15, arr.length = 0.2, lwd = 1.2)
@@ -911,16 +1147,16 @@ dev.off()
 
 #snow_simu----
 
-# pdf(paste0(base_dir,"R/figs_exp/snow_simu.pdf"), width = 12, height = 6)
-# tiff(paste0(base_dir,"R/figs_exp/snow_simu.tiff"), width = 12, height = 6,
+# pdf(paste0(base_dir,"R/figs_exp/snow_simu.pdf"), width = 12, height = 10)
+# tiff(paste0(base_dir,"R/figs_exp/snow_simu.tiff"), width = 12, height = 10,
 #      units = "in", res = 300)
-png(paste0(base_dir,"R/figs_exp/snow_simu.png"), width = 12, height = 6,
+png(paste0(base_dir,"R/figs_exp/snow_simu.png"), width = 12, height = 10,
     units = "in", res = 300)
 
 
-layout(matrix(c(rep(c(1, 5, 9), 8), 2, 6, 10,
-                rep(c(3, 7, 11), 8), 4, 8, 12),
-              3, 18), widths=c(), heights=c())
+layout(matrix(c(rep(c(1, 5, 9, 13, 17), 8), 2, 6, 10, 14, 18,
+                rep(c(3, 7, 11, 15, 19), 8), 4, 8, 12, 16, 20),
+              5, 18), widths=c(), heights=c())
 # layout.show(n=12)
 
 snow_sim_plot <- function(data_plot, cols, breaks, header, lab_unit, elev_bands = my_elev_bands){
@@ -964,6 +1200,8 @@ snow_sim_plot(smea_band, cols = my_col, breaks = my_bre,
 #SWE depth trend
 cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
 cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
+# cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+# cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
 
 my_col <- alpha(c(cols_min, cols_max), alpha = 1.0)
 my_bre <- seq(-max_na(abs(sslo_band)), max_na(abs(sslo_band)), length.out = length(my_col)+1)
@@ -981,6 +1219,8 @@ snow_sim_plot(vmea_band, cols = my_col, breaks = my_bre,
 #SWE volume trend
 cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
 cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
+# cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+# cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
 
 my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vslo_band)), max_na(abs(vslo_band)), length.out = length(my_col)+1)
@@ -989,8 +1229,12 @@ snow_sim_plot(vslo_band, cols = my_col, breaks = my_bre,
               header = "d) SWE volume trend", lab_unit = expression(paste("[", "10"^"6", "m"^"3", " decade"^"-1", "]")))
 
 #SWE volume diff mean
-cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
-cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+# cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+# cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
+cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
+
+
 my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vdif_band)), max_na(abs(vdif_band)), length.out = length(my_col)+1)
 
@@ -998,13 +1242,58 @@ snow_sim_plot(vdif_band, cols = my_col, breaks = my_bre,
               header = "e) Accum./Melt mean", lab_unit = expression(paste("[", "10"^"6", "m"^"3", " day"^"-1", "]")))
 
 #SWE volume diff trend
-cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
-cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+# cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+# cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
+cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
+
+
 my_col <- c(cols_min, cols_max)
 my_bre <- seq(-max_na(abs(vdis_band)), max_na(abs(vdis_band)), length.out = length(my_col)+1)
 
 snow_sim_plot(vdis_band, cols = my_col, breaks = my_bre,
               header = "f) Accum./Melt trend", lab_unit = expression(paste("[", "10"^"6", "m"^"3", " day"^"-1", "decade"^"-1", "]"))) #
+
+#Temperature mean
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+my_col <- c(cols_min, cols_max)
+my_bre <- c(seq(min_na(tmea_band), 0, length.out = 100), seq(0, max_na(tmea_band), length.out = 100+1))
+
+snow_sim_plot(tmea_band, cols = my_col, breaks = my_bre,
+              header = "g) Temperature mean", lab_unit = expression(paste("[", "°C", "]"))) 
+
+#Temperature trend
+cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+my_col <- c(cols_min, cols_max)
+my_bre <- seq(-max_na(abs(tslo_band)), max_na(abs(tslo_band)), length.out = length(my_col)+1)
+
+snow_sim_plot(tslo_band, cols = my_col, breaks = my_bre,
+              header = "h) Temperature trend", lab_unit = expression(paste("[", "°C ", "decade"^"-1", "]"))) 
+
+#Precipitation mean
+my_col <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(200)
+my_col <- viridis::viridis(200, direction = -1)
+# alptempr::min_na(pmea_band)
+my_bre <- seq(0, alptempr::max_na(pmea_band), length.out = length(my_col)+1)
+
+
+snow_sim_plot(pmea_band, cols = my_col, breaks = my_bre,
+              header = "i) Precipitation mean", lab_unit = expression(paste("[", "mm", "]"))) 
+
+#Precipitation trend
+# cols_max <- colorRampPalette(c("grey98", "gold3", "darkgoldenrod3", "darkorange4", "darkred"))(100)
+# cols_min <- colorRampPalette(c(viridis::viridis(9, direction = 1)[1:4], "grey98"))(100)
+cols_min <- colorRampPalette(c("darkred", "darkorange4", "darkgoldenrod3", "gold3","grey98"))(100)
+cols_max <- colorRampPalette(c("grey98", viridis::viridis(9, direction = 1)[4:1]))(100)
+
+my_col <- c(cols_min, cols_max)
+my_bre <- seq(-max_na(abs(pslo_band)), max_na(abs(pslo_band)), length.out = length(my_col)+1)
+
+snow_sim_plot(pslo_band, cols = my_col, breaks = my_bre,
+              header = "j) Precipitation trend", lab_unit = expression(paste("[", "mm ", "decade"^"-1", "]"))) 
+
 
 dev.off()
 
@@ -1687,7 +1976,7 @@ melt_plot <- function(i, head_ind = "", do_labs = F){
   #put to NA for polygon drawing
   snow_wfj[is.na(snow_wfj)] <- 0
   
-  ssmo <- 7
+  ssmo <- -1 #negative value is no smoothing
   
   x_axis_lab <- c(16,46,74,105,135,166,196,227,258,288,319,349)
   x_axis_tic <- c(16,46,74,105,135,166,196,227,258,288,319,349,380)-15
@@ -1762,10 +2051,10 @@ dev.off()
 #calib_res----
 
 # pdf(paste0(base_dir, "R/figs_exp/calib_res.pdf"), width = 16, height = 4*2.5)
-# png(paste0(base_dir,"R/figs_exp/calib_res.png"), width = 16, height = 4*2.5,
-#     units = "in", res = 300)
-tiff(paste0(base_dir,"R/figs_exp/calib_res.tiff"), width = 16, height = 4*2.5,
-     units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/calib_res.png"), width = 16, height = 4*2.5,
+    units = "in", res = 300)
+# tiff(paste0(base_dir,"R/figs_exp/calib_res.tiff"), width = 16, height = 4*2.5,
+#      units = "in", res = 300)
 
 par(mfrow = c(4, 1))
 par(mar = c(2, 5.5, 2.7, 0.5))
@@ -1794,7 +2083,7 @@ for(i in 1:ncol(snows_cal)){
   mtext("SWE [m]", side= 2, line = 2.7, cex = 1.7, adj = 0.5)
   box()
   if(i == 1){
-    legend("topleft", c("obs", "sim."), pch = 19, cex = 1.7, col = c("steelblue4", "black"), bg = "white")
+    legend("topright", c("obs", "sim."), pch = 19, cex = 1.8, col = c("steelblue4", "black"), bg = "white")
     
   }
   
@@ -1909,10 +2198,10 @@ cols_spat_eur <- foreach(i = 1:length(scd_eurac_ann), .combine = 'cbind') %dopar
 
 
 # pdf(paste0(base_dir,"R/figs_exp/scd_maps.pdf"), width = 16, height = 3.2)
-tiff(paste0(base_dir,"R/figs_exp/scd_maps.tiff"), width = 16, height = 3.2,
-     units = "in", res = 300)
-# png(paste0(base_dir,"R/figs_exp/scd_maps.png"), width = 16, height = 3.2,
-#     units = "in", res = 300)
+# tiff(paste0(base_dir,"R/figs_exp/scd_maps.tiff"), width = 16, height = 3.2,
+#      units = "in", res = 300)
+png(paste0(base_dir,"R/figs_exp/scd_maps.png"), width = 16, height = 3.2,
+    units = "in", res = 300)
 
 #Plot maps
 layout(matrix(c(rep(1, 7), 2, rep(3, 7), 4, rep(5, 7), 6),
@@ -2928,6 +3217,43 @@ seco_len; seco_len - seco_len_mel_1; seco_len_mel_1 - seco_len_mel_2; seco_len_m
 firs_len_fj; firs_len_fj - firs_len_mel_1_fj; firs_len_mel_1_fj - firs_len_mel_2_fj; firs_len_mel_2_fj - firs_len_mel_3_fj; firs_len_mel_3_fj
 seco_len_fj; seco_len_fj - seco_len_mel_1_fj; seco_len_mel_1_fj - seco_len_mel_2_fj; seco_len_mel_2_fj - seco_len_mel_3_fj; seco_len_mel_3_fj 
 
+#POT magnitudes
+
+# max(melt_peak/1000000, na.rm = T)
+# max(prec_peak_liq/1000000, na.rm = T)
+
+pdf(paste0(base_dir, "R/figs_exp/flood_mags_raw.pdf"), width = 7.5, height = 3.0)
+
+par(mfrow = c(1, 4))
+par(family = "serif")
+box_width <- 1.2
+
+par(mar = c(1, 4.0, 2, 0))
+
+boxplot(melt_peak[firs_ind]/1000000, ylim = c(0, 4000), width = box_width,
+        notch = T, axes = F, col = "grey35", pch = 19)
+axis(2,  mgp=c(3, 0.60, 0), tck = -0.02, cex.axis = 2.5)
+
+par(mar = c(1, 0, 2, 4.0))
+
+boxplot(melt_peak[seco_ind]/1000000, ylim = c(0, 4000), width = box_width, 
+        notch = T, axes = F, col = "grey35", pch = 19)
+
+par(mar = c(1, 4.0, 2, 0))
+
+boxplot(prec_peak_liq[firs_ind]/1000000, ylim = c(0, 4000), width = box_width,
+        notch = T, axes = F, col = alpha("steelblue4", alpha = 0.8), pch = 19)
+
+par(mar = c(1, 0, 2, 4.0))
+
+boxplot(prec_peak_liq[seco_ind]/1000000, ylim = c(0, 4000), width = box_width,
+        notch = T, axes = F, col = alpha("steelblue4", alpha = 0.8), pch = 19)
+axis(4,  mgp=c(3, 1.15, 0), tck = -0.02, cex.axis = 2.5)
+
+dev.off()
+
+
+
 
 #Simple calculation protective effect
 prec_basin_day <- ord_day(data_in = prec_basin_ms_3,
@@ -3752,5 +4078,9 @@ box()
 
 dev.off()
 
+ind_sel <- 366:(9*365)
+plot(date[ind_sel], lapse_temp[ind_sel], type = "l")
 
+abline(h= median(lapse_temp[ind_sel]))
 
+       

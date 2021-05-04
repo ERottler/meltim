@@ -1078,6 +1078,7 @@ for(i in 1:ncol(snows_cal)){
 mean(nrmse_all)
 mean(pbias_all)
 mean(rsq_all)
+mean(nse_all)
 
 nrmse(snows_cal[, i], snows_stat_cal[, i], na.rm = T)
 
